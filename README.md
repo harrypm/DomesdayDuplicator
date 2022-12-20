@@ -46,15 +46,19 @@ All these files are clearly layed out in this repository allowing drag and drop 
 
 To compile the software on Ubuntu, you will need Qt5 installed as well as the necessary support packages
 
-Dependencys Install:
+Dependencys Install: Old
 
-`sudo apt install git g++ qtbase5-dev qt5-default qt5-qmake libqt5serialport5-dev libusb-1.0-0-dev`
+    sudo apt install git g++ qtbase5-dev qt5-default qt5-qmake libqt5serialport5-dev libusb-1.0-0-dev
 
 Note: For later Ubuntu versions such as 22.04 you may need libqt5-dev and libgl-dev.
 
+Dependencys Install: Ubuntu 22.04:
+
+    sudo apt install --no-install-recommends git cmake libgl-dev qt6-base-dev libqt6serialport6-dev libusb-1.0-0-dev qt6-multimedia-dev build-essential
+
 Applicaton Install:
 
-`git clone https://github.com/simoninns/DomesdayDuplicator`
+    git clone https://github.com/simoninns/DomesdayDuplicator
 
 Once the software is downloaded, simply issue the following commands to compile the application:
 
@@ -65,7 +69,7 @@ Once the software is downloaded, simply issue the following commands to compile 
 
 This will allow you to run the application using the following command:
 
-`~/DomesdayDuplicator/Linux-Application/DomesdayDuplicator/DomesdayDuplicator &`
+    ~/DomesdayDuplicator/Linux-Application/DomesdayDuplicator/DomesdayDuplicator &
 
 And should be avalible for quick lanuch inside Linux Mint.
 
@@ -87,7 +91,7 @@ In addition, it is recommended to also compile and install the two utility appli
 
 The DomesdayDuplicator application and tools can also be built using CMake, using either Qt 5 or Qt 6. To build on Ubuntu 22.04 using Qt 6, you should first install the dependencies:
 
-`sudo apt install --no-install-recommends cmake libgl-dev qt6-base-dev libqt6serialport6-dev libusb-1.0-0-dev`
+    sudo apt install --no-install-recommends cmake libgl-dev qt6-base-dev libqt6serialport6-dev libusb-1.0-0-dev
 
 The application and tools can then be configured and built like this:
 
@@ -108,19 +112,19 @@ In order for the GUI application to connect to the Domesday Duplicator USB devic
     SUBSYSTEM=="usb", ATTRS{idVendor}=="1d50", ATTRS{idProduct}=="603b", MODE="0666"
     Once the file has been created, issue the following command to reload the USB configuration rules:
 
-`sudo udevadm control --reload-rules`
+    sudo udevadm control --reload-rules
 
 Serial port device permissions
 If you wish to use the automatic capture feature a serial connection between the Ubuntu PC and the laser video disc player is required (you will need an appropriate cable and USB to RS232 adapter). In order to access a serial device the Ubuntu user account must given the 'dialout' group permissions. This can be added to the current user account using the following command:
 
-`sudo usermod -a -G dialout $USER`
+    sudo usermod -a -G dialout $USER
 
 Note that this permission does not become active until the user account has logged out and logged back in again.
 
 ## Serial port device permissions
 If you wish to use the automatic capture feature a serial connection between the Ubuntu PC and the laser video disc player is required (you will need an appropriate cable and USB to RS232 adapter). In order to access a serial device the Ubuntu user account must given the 'dialout' group permissions. This can be added to the current user account using the following command:
 
-```sudo usermod -a -G dialout $USER```
+    sudo usermod -a -G dialout $USER
 
 Note that this permission does not become active until the user account has logged out and logged back in again.
 
