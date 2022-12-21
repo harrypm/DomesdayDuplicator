@@ -97,15 +97,13 @@ MainWindow::MainWindow(QWidget *parent) :
     // Disable the test mode option
     ui->actionTest_mode->setEnabled(false);
 
-    // Set up graphs, if requested
-    setupMainUIGraphs();
-
     // Set up a timer for timing the capture duration
     captureDurationTimer = new QTimer(this);
     connect(captureDurationTimer, SIGNAL(timeout()), this, SLOT(updateCaptureDuration()));
 
-    // Set up timers for amplitude procesing
-    amplitudeSettings();
+    // Set up amplitude timer, and update amplitude UI
+    amplitudeTimer = new QTimer(this);
+    updateAmplitudeUI();
 
     // Set up the Domesday Duplicator USB device and connect the signal handlers
     usbDevice = new UsbDevice(this, configuration->getUsbVid(), configuration->getUsbPid());
@@ -236,11 +234,8 @@ void MainWindow::configurationChangedSignalHandler(void)
     // Update the target directory for the storage information
     storageInfo->setPath(configuration->getCaptureDirectory());
 
-    // Reload graph settings
-    setupMainUIGraphs();
-
-    // Reload amplitude settings
-    amplitudeSettings();
+    // Update amplitude UI
+    updateAmplitudeUI();
 }
 
 // Remote control command signal handler
@@ -711,7 +706,6 @@ void MainWindow::on_capturePushButton_clicked()
 
         // Start graph processing
         amplitudeTimer->start(1000);
-
     } else {
         // Stop capture
         playerControl->stopAutomaticCapture(); // Stop auto-capture if in progress
@@ -845,39 +839,37 @@ void MainWindow::updatePlayerRemoteDialog(void)
     }
 }
 
-// Setup Main UI Graph Functions
+// Timer callback to update amplitude display
+void MainWindow::updateAmplitudeLabel(void)
+{
+    ui->meanAmplitudeLabel->setText(QString::number(ui->am->getMeanAmplitude(), 'f', 3));
+}
 
-void MainWindow::setupMainUIGraphs(void) {
-
-if (configuration->getGraphType() == Configuration::GraphType::QCPMean) {
-    ui->am->setVisible(true);
+// Update amplitude UI elements
+void MainWindow::updateAmplitudeUI(void)
+{
+    // If any amplitude display is enabled, capture amplitude data
+    if (configuration->getAmplitudeEnabled() || configuration->getGraphType() != Configuration::GraphType::noGraph) {
+        connect(amplitudeTimer, SIGNAL(timeout()), ui->am, SLOT(updateBuffer()));
     } else {
-    ui->am->setVisible(false);
+        disconnect(amplitudeTimer, SIGNAL(timeout()), ui->am, SLOT(updateBuffer()));
     }
-}
 
-// Update amplitude label
-
-void MainWindow::updateAmplitude(void) {
-    ui->meanAmplitudeLabel->setText(QString::number(AmplitudeMeasurement::getMeanAmplitude(), 'f', 3));
-}
-
-// Set up timers for amplitude processing
-
-void MainWindow::amplitudeSettings(void) {
-    // Set up a timer for amplitude processing
-    amplitudeTimer = new QTimer(this);
-    if (configuration->getAmplitudeEnabled() == true) {
-    connect(amplitudeTimer, SIGNAL(timeout()), this, SLOT(updateAmplitude()));
-    ui->meanAmplitudeLabel->setText("0.000");
+    // Update amplitude label, driven by timer
+    if (configuration->getAmplitudeEnabled()) {
+        ui->meanAmplitudeLabel->setText("0.000");
+        connect(amplitudeTimer, SIGNAL(timeout()), this, SLOT(updateAmplitudeLabel()));
     } else {
-        disconnect(amplitudeTimer);
+        disconnect(amplitudeTimer, SIGNAL(timeout()), this, SLOT(updateAmplitudeLabel()));
         ui->meanAmplitudeLabel->setText("N/A");
     }
+
+    // Update amplitude graph
     if (configuration->getGraphType() == Configuration::GraphType::QCPMean) {
-    connect(amplitudeTimer, SIGNAL(timeout()), ui->am, SLOT(setBuffer()));
-    connect(amplitudeTimer, SIGNAL(timeout()), ui->am, SLOT(plot()));
+        ui->am->setVisible(true);
+        connect(amplitudeTimer, SIGNAL(timeout()), ui->am, SLOT(plotGraph()));
     } else {
-        disconnect(amplitudeTimer);
+        disconnect(amplitudeTimer, SIGNAL(timeout()), ui->am, SLOT(plotGraph()));
+        ui->am->setVisible(false);
     }
 }

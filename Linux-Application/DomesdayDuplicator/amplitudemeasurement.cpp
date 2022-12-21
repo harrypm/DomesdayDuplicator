@@ -1,109 +1,119 @@
-#include <QtWidgets>
-#include <QtMultimedia>
-#include <QAudioBuffer>
-#include "usbcapture.h"
+/************************************************************************
+
+    amplitudemeasurement.cpp
+
+    Capture application for the Domesday Duplicator
+    DomesdayDuplicator - LaserDisc RF sampler
+    Copyright (C) 2022 Matt Perry
+
+    This file is part of Domesday Duplicator.
+
+    Domesday Duplicator is free software: you can redistribute it and/or
+    modify it under the terms of the GNU General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    Email: simon.inns@gmail.com
+
+************************************************************************/
+
 #include "amplitudemeasurement.h"
+
 #include <QList>
-#include <QAudioDevice>
-#include <QAudioSource>
+#include <algorithm>
+#include "usbcapture.h"
 
-// Note that in signed 16 PCM, one disk buffer (64MB) is 838860 milliseconds
+static constexpr qint32 GRAPH_POINTS = 1028;
+static constexpr double MAX_SAMPLE = 32767.0;
 
-QList<int> m_buffer;
-QVector<double> sample;
-static int plotpointcount = 0;
-int signalPeaks = 0;
-qreal peak = 32767;
-// Fill array with zeroes and backfill as needed
-QList<double> rollingAmp({0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0});
-
-// Initialize QCP graph
 AmplitudeMeasurement::AmplitudeMeasurement(QWidget *parent)
     : QCustomPlot(parent)
 {
-    samples.fill(0, 1028);
+    graphXValues.resize(GRAPH_POINTS);
+    for (int i = 0; i < GRAPH_POINTS; i++) graphXValues[i] = i;
+    graphYValues.fill(0, GRAPH_POINTS);
+
+    // Initialize QCP graph
     wavePlot = addGraph();
     setMinimumHeight(50);
     xAxis->setTicks(false);
     setBackground(QColor(240, 240, 240, 255));
     yAxis->setRange(QCPRange(-1, 1));
     axisRect()->setAutoMargins(QCP::msNone);
-    axisRect()->setMargins(QMargins(25,7,0,6));
+    axisRect()->setMargins(QMargins(25, 7, 0, 6));
     QFont yfont;
     yfont.setPointSize(6);
     yAxis->setTickLabelFont(yfont);
+
+    // Clear the amplitude history
+    std::fill(rollingAmp.begin(), rollingAmp.end(), 0.0);
 }
 
-// Process graph
-void AmplitudeMeasurement::plot()
+// Get a buffer from UsbCapture, and update the statistics
+void AmplitudeMeasurement::updateBuffer()
 {
-    QVector<double> x(samples.size());
-    for (int i=0; i<x.size(); i++)
-        x[i] = i;
-    if (wavePlot->dataCount() >= 1027)
+    // Get a recent disk buffer from UsbCapture
+    const unsigned char *rawData;
+    qint32 rawBytes;
+    UsbCapture::getAmplitudeBuffer(&rawData, &rawBytes);
+
+    // Convert to 16-bit samples in diskBuffer
+    inputSamples.resize(rawBytes / 2);
+    for (qint32 inPos = 0, outPos = 0; inPos < rawBytes; inPos += 2, outPos++) {
+        // Get the original 10-bit unsigned value
+        quint32 originalValue = rawData[inPos] + (rawData[inPos + 1] * 256);
+
+        // Sign and scale the data to 16-bits
+        inputSamples[outPos] = static_cast<qint16>(originalValue - 512) * 64;
+    }
+}
+
+// Draw the graph
+void AmplitudeMeasurement::plotGraph()
+{
+    // Add every millionth point to graphYValues and shift along
+    qint32 numSamples = inputSamples.size();
+    for (int i = 0; i < numSamples; i += 1000000) {
+        graphYValues.append(inputSamples[i] / MAX_SAMPLE);
+    }
+    if (graphYValues.size() > GRAPH_POINTS) {
+        graphYValues.remove(0, graphYValues.size() - GRAPH_POINTS);
+    }
+
+    if (wavePlot->dataCount() >= GRAPH_POINTS - 1) {
         wavePlot->data()->clear();
-    wavePlot->addData(x, samples);
-    xAxis->setRange(QCPRange(0, samples.size()));
+    }
+    wavePlot->addData(graphXValues, graphYValues);
+    xAxis->setRange(QCPRange(0, GRAPH_POINTS));
     replot();
 }
 
-//Fill the buffer with data
-void AmplitudeMeasurement::setBuffer()
-{
-
-    QAudioFormat format;
-    format.setSampleRate(40000);
-    format.setChannelCount(1);
-    format.setSampleFormat(QAudioFormat::Int16);
-    QByteArray sourceAudio = UsbCapture::getBuffer();
-    QAudioBuffer ampliBuffer(sourceAudio, format, -1);
-
-    const qint16 *data = ampliBuffer.constData<qint16>();
-    int count = ampliBuffer.sampleCount();
-
-    for (int i=0; i<count; i++){
-        double val = data[i]/peak;
-        i=i+1000000;
-        plotpointcount++;
-        if (plotpointcount >= 1028) {
-            samples.removeFirst();
-        }
-        samples.append(val);
-    }
-}
-
-//Calculate mean amplitude (text label)
+// Calculate mean amplitude
 double AmplitudeMeasurement::getMeanAmplitude()
 {
-    QAudioFormat format;
-    format.setSampleRate(40000);
-    format.setChannelCount(1);
-    format.setSampleFormat(QAudioFormat::Int16);
-    QByteArray sourceAudio = UsbCapture::getBuffer();
-    QAudioBuffer ampliBuffer(sourceAudio, format, -1);
-
-    double posSum = 0;
-    double avgVal = 0;
-    double finalAmp = 0.0;
-
-    const qint16 *ampliData = ampliBuffer.constData<qint16>();
-    double ampliCount = ampliBuffer.sampleCount();
-
-    for (int i=0; i<ampliCount; i++){
-        const double& data = ampliData[i];
-        avgVal = data/peak;
-        posSum += avgVal * avgVal;
+    qint32 numSamples = inputSamples.size();
+    double posSum = 0.0;
+    for (int i = 0; i < numSamples; i++){
+        posSum += inputSamples[i] * inputSamples[i];
     }
-    for (int i=0; i<19; i++) {
-        rollingAmp.move(i+1, i);
-    }
-    rollingAmp[19] = sqrt(posSum / (ampliCount/2));
-    for (int ra=0; ra<19; ra++) {
-        finalAmp += rollingAmp[ra];
-    }
-    if (rollingAmp.contains(0)) {
-        return rollingAmp[19];
+
+    std::copy(rollingAmp.begin() + 1, rollingAmp.end(), rollingAmp.begin());
+    rollingAmp.back() = sqrt(posSum / (MAX_SAMPLE * MAX_SAMPLE * (numSamples / 2)));
+
+    if (std::find(rollingAmp.begin(), rollingAmp.end(), 0.0) != rollingAmp.end()) {
+        // rollingAmp (probably) isn't full yet -- return the latest value
+        return rollingAmp.back();
     } else {
-    return ((finalAmp)/20);
+        double finalAmp = 0.0;
+        for (double value: rollingAmp) finalAmp += value;
+        return finalAmp / rollingAmp.size();
     }
 }
