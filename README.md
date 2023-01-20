@@ -1,10 +1,12 @@
-# Domesday Duplicator (With Docs Version)
+# Domesday Duplicator (DdD) (With Docs Version)
 
 Additional Images and documentaion by Harry Munday.
 
 ![DdD-Trasparent-Harrypm](https://user-images.githubusercontent.com/56382624/183899501-a1914f3f-0710-4095-8f0e-b84e6d266d1c.png)
 
 ## Manufacturing and Costs
+
+[PCBWay 1-Click Fabrication Method](https://docs.google.com/document/d/1k2bPPwHPoG7xXpS1NCYEe3w_jD_ts0yRCp-2aQ6QoKY/)
 
 #### The Domesday Duplicator is 3 Boards
 
@@ -22,7 +24,7 @@ DE0-Nano FFPGA Status - Shortages 100-200% Inflation. (100-140GBP) (MSRP 70-80GB
 
 Due to inflation and shortages (2022) prices vary too much to recommend any spesific vendors in the USA/UK/Europe or Asia currently.
 
-There is normally a 2-4 week manufacturing time but due to shipping costs its cheaper on a single unit basis to use a frabrication service due to mulit parts order venders total shipping cost makes it impractical unless making 5-20+ units this cost is around 120-150USD per board depending on provider with the example company being PCBWay.
+There is normally a 1-4 week manufacturing time but due to shipping costs its cheaper on a single unit basis to use a frabrication service, due to having to use sevreal vendors to aquire parts the total shipping cost makes it impractical unless making 5-20+ units this cost is around 125-150USD per board depending on provider with the example company being PCBWay witch ship globally.
 
 ## Required Files for Fabraciation!
 
@@ -40,9 +42,35 @@ All these files are clearly layed out in this repository allowing drag and drop 
 
 [DD86 Docs](https://www.domesday86.com/?page_id=1070) (Tehcnicals & Linux Based Setup)
 
+## Gain Control 
+
+![Sony ILCE-7RM3 DdD Gain DIP](https://user-images.githubusercontent.com/56382624/213614733-c80425f3-571f-472f-a17b-b714803fe90c.JPG)
+
+0000 is 1-2-3-4 dips, In orientation to bottom numbers up is 1 and down is 0.
+
+All selected in this up position is 1111 or 2.02 Minimum Gain When dip’s 2-3-4 are down it's 1000 this is the maximum gain of 8.5, the table below shows all possible positions.
+
+|**Configuration**|**Switch Position**|**Gain**|
+|-----------------|-------------------|--------|
+|15               |1111               |2.02    |
+|7                |0111               |2.17    |
+|11               |1011               |2.27    |
+|13               |1101               |2.45    |
+|3                |0011               |2.54    |
+|14               |1110               |2.59    |
+|5                |0101               |2.79    |
+|6                |0110               |3.02    |
+|9                |1001               |3.04    |
+|10               |1010               |3.34    |
+|1                |0001               |3.8     |
+|12               |1100               |4       |
+|2                |0010               |4.4     |
+|4                |0100               |6       |
+|8                |1000               |8.5     |
+
 ## Capture & Control Software Installation
 
-[Windows Build](https://github.com/TokugawaHeavyIndustries/DomesdayDuplicator-WinBuild) (self-contained usb driver install needed)
+[Windows Build](https://github.com/TokugawaHeavyIndustries/DomesdayDuplicator-WinBuild) (self-contained, just install USB driver via ZigZag)
 
 To compile the software on Ubuntu, you will need Qt5 installed as well as the necessary support packages
 
@@ -151,6 +179,8 @@ As you can see over 11 hours of capture time avalible  on a fully setup Linux Mi
 ![Automatic-Capture](https://user-images.githubusercontent.com/56382624/183903273-faa4f86c-57c1-40de-966f-89d2121a2293.png)
 
 ![Player-Remote](https://user-images.githubusercontent.com/56382624/183903323-28b51b11-d5f3-4a76-87be-8b19d1ec30a7.png)
+
+
 
 ## Synopsis
 
