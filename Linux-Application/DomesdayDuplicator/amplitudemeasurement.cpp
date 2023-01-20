@@ -79,9 +79,9 @@ void AmplitudeMeasurement::updateBuffer()
 // Draw the graph
 void AmplitudeMeasurement::plotGraph()
 {
-    // Add every millionth point to graphYValues and shift along
+    // Add every 100th point to graphYValues and shift along
     qint32 numSamples = inputSamples.size();
-    for (int i = 0; i < numSamples; i += 1000000) {
+    for (int i = 0; i < numSamples; i += 100) {
         graphYValues.append(inputSamples[i] / MAX_SAMPLE);
     }
     if (graphYValues.size() > GRAPH_POINTS) {
@@ -101,12 +101,13 @@ double AmplitudeMeasurement::getMeanAmplitude()
 {
     qint32 numSamples = inputSamples.size();
     double posSum = 0.0;
-    for (int i = 0; i < numSamples; i++){
-        posSum += inputSamples[i] * inputSamples[i];
+    for (qint16 sample: inputSamples) {
+        posSum += static_cast<double>(sample) * static_cast<double>(sample);
     }
 
     std::copy(rollingAmp.begin() + 1, rollingAmp.end(), rollingAmp.begin());
-    rollingAmp.back() = sqrt(posSum / (MAX_SAMPLE * MAX_SAMPLE * (numSamples / 2)));
+    // Divide by 2 here for a crest factor of sqrt(2) (i.e. assume a sin-ish signal)
+    rollingAmp.back() = sqrt(posSum / (MAX_SAMPLE * MAX_SAMPLE * numSamples / 2.0));
 
     if (std::find(rollingAmp.begin(), rollingAmp.end(), 0.0) != rollingAmp.end()) {
         // rollingAmp (probably) isn't full yet -- return the latest value

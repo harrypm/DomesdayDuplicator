@@ -48,6 +48,9 @@
 #define TRANSFERSPERDISKBUFFER 256
 #define NUMBEROFDISKBUFFERS 4
 
+// The number of bytes to capture for amplitude metering.
+#define AMPLITUDESIZE (1024 * 2)
+
 // Note:
 //
 // When saving in 16-bit format, each disk buffer represents 64 Mbytes of data
@@ -630,9 +633,10 @@ void UsbCapture::checkBufferSequence(qint32 diskBufferNumber)
         // at worst we will see a change within (1 << COUNTER_SHIFT) + 1
         // samples.
         for (qint32 pointer = 2; pointer < ((1 << COUNTER_SHIFT) + 1) * 2; pointer += 2) {
-            const quint32 seqNum = diskBuffer[pointer + 1] >> 2;
+            quint32 seqNum = diskBuffer[pointer + 1] >> 2;
             if (seqNum != prevSeqNum) {
                 // Found it -- compute sequenceCounter's value at the start of the buffer
+                if (seqNum == 0) seqNum = COUNTER_MAX;
                 sequenceCounter = (seqNum << COUNTER_SHIFT) - (pointer / 2);
                 break;
             }
@@ -818,9 +822,9 @@ void UsbCapture::writeBufferToDisk(QFile *outputFile, qint32 diskBufferNumber)
 
     // Has getAmplitudeBuffer requested a new buffer?
     if (needAmplitudeUpdate) {
-        // Copy this disk buffer into the amplitude buffer that's not currently being read
+        // Copy the start of this disk buffer into the amplitude buffer that's not currently being read
         qint32 num = 1 - currentAmplitudeBuffer;
-        memcpy(amplitudeBuffers[num], diskBuffers[diskBufferNumber], TRANSFERSIZE * TRANSFERSPERDISKBUFFER);
+        memcpy(amplitudeBuffers[num], diskBuffers[diskBufferNumber], AMPLITUDESIZE);
 
         // Flip the buffers
         currentAmplitudeBuffer = num;
@@ -887,7 +891,7 @@ void UsbCapture::getAmplitudeBuffer(const unsigned char **buffer, qint32 *numByt
 {
     // Get the most-recently-updated buffer (reading the atomic, to ensure this thread has seen the writes to it)
     *buffer = amplitudeBuffers[currentAmplitudeBuffer];
-    *numBytes = TRANSFERSIZE * TRANSFERSPERDISKBUFFER;
+    *numBytes = AMPLITUDESIZE;
 
     // Tell the capture thread to grab a new buffer
     needAmplitudeUpdate = true;
