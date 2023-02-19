@@ -1,6 +1,6 @@
 # Domesday Duplicator (DdD) (With Docs Version)
 
-Additional Images and documentaion by Harry Munday.
+Additional Images and documentation by Harry Munday.
 
 ![DdD-Trasparent-Harrypm](https://user-images.githubusercontent.com/56382624/183899501-a1914f3f-0710-4095-8f0e-b84e6d266d1c.png)
 
@@ -10,11 +10,11 @@ Additional Images and documentaion by Harry Munday.
 
 #### The Domesday Duplicator is 3 Boards
 
-DdD ADC (RF Input, Amplification & Filtering)
+DdD ADC (RF Input, Amplification & Filtering) (Fabrication Required)
 
-DE0-Nano FPGA (Data Buffer)
+DE0-Nano FPGA (Data Buffer) (Avaliable Off-Shelf)
 
-FX3 USB 3.0 (Computer Interface)
+FX3 USB 3.0 (Computer Interface) (Avaliable Off-Shelf)
 
 ### Parts Avaliblity Status
 
@@ -40,7 +40,7 @@ All these files are clearly layed out in this repository allowing drag and drop 
 
 [Harrypm's AIO windows Setup Package](https://docs.google.com/document/d/1j9QM5dFXIgRhrnFb7q1N1S557zTegOVq0JKApvoDmdE/edit?usp=sharing) (User Friendly)
 
-[DD86 Docs](https://www.domesday86.com/?page_id=1070) (Tehcnicals & Linux Based Setup)
+[DD86 Docs](https://www.domesday86.com/?page_id=1070) (Technical information & Linux Based Setup)
 
 ## Gain Control 
 
@@ -68,69 +68,51 @@ All selected in this up position is 1111 or 2.02 Minimum Gain When dip’s 2-3-4
 |4                |0100               |6       |
 |8                |1000               |8.5     |
 
-## Capture & Control Software Installation
+# Windows Software Installation
 
-[Windows Build](https://github.com/TokugawaHeavyIndustries/DomesdayDuplicator-WinBuild) (self-contained, just install USB driver via ZigZag)
+Today there is a [Windows Build](https://github.com/TokugawaHeavyIndustries/DomesdayDuplicator-WinBuild/releases/tag/v2.3) self-contained, just install USB libusb driver via ZigZag and you are ready to use the DdD.
 
-To compile the software on Ubuntu, you will need Qt5 installed as well as the necessary support packages
+Enable Amaplitude messurement
 
-Dependencys Install: Old
+![DomesdayDuplicator-Prefrences](https://user-images.githubusercontent.com/56382624/219953622-408a87f8-1f1c-450a-91b2-f2798673e27a.png)
 
-    sudo apt install git g++ qtbase5-dev qt5-default qt5-qmake libqt5serialport5-dev libusb-1.0-0-dev
+Hookup your RF sorce and Capture!
 
-Note: For later Ubuntu versions such as 22.04 you may need libqt5-dev and libgl-dev.
+![Windows-DdD-App](https://user-images.githubusercontent.com/56382624/219953404-2ad85772-7fe3-40e8-a4b3-9ea61443736d.gif)
 
-Dependencys Install: Ubuntu 22.04:
+# Linux Software Installation
+
+To compile the software on Ubuntu/Debian based distros, you will need Qt5 installed as well as the necessary support packages
+
+The DdD application and two tools are now switched over to Cmake for compiling, for older versions please refure to older doc revisions.
+
+Note: For current Ubuntu/Mint versions such as 22.04 you may need libqt5-dev and libgl-dev.
+
+Dependencys Install: (Ubuntu 22.04 - Current)
 
     sudo apt install --no-install-recommends git cmake libgl-dev qt6-base-dev libqt6serialport6-dev libusb-1.0-0-dev qt6-multimedia-dev build-essential
 
 Applicaton Install:
 
+    mkdir ~/github
+    cd ~/github
     git clone https://github.com/simoninns/DomesdayDuplicator
 
-Once the software is downloaded, simply issue the following commands to compile the application:
+Once the software is downloaded, simply issue the following commands to compile the application and its two utility applications `dddconv` and `dddutil`:
 
-    cd DomesdayDuplicator/Linux-Application/DomesdayDuplicator
-    qmake
-    make all
+    cd ~/github/DomesdayDuplicator/Linux-Application
+    cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo .
+    make -j8
     sudo make install
 
 This will allow you to run the application using the following command:
 
     ~/DomesdayDuplicator/Linux-Application/DomesdayDuplicator/DomesdayDuplicator &
 
-And should be avalible for quick lanuch inside Linux Mint.
+And should be avalible for quick lanuch inside Linux Mint once pinned to pannel.
 
-In addition, it is recommended to also compile and install the two utility applications dddconv and dddutil:
+By default CMake will install into `/usr/local`. To install into `/some/dir` instead, add `-DCMAKE_INSTALL_PREFIX=/some/dir` to the `cmake` command.
 
-    cd DomesdayDuplicator/Linux-Application/dddconv
-    qmake
-    make
-    sudo make install
-
-&
-
-    cd DomesdayDuplicator/Linux-Application/dddutil
-    qmake
-    make all
-    sudo make install
-
-## Building the software with CMake
-
-The DomesdayDuplicator application and tools can also be built using CMake, using either Qt 5 or Qt 6. To build on Ubuntu 22.04 using Qt 6, you should first install the dependencies:
-
-    sudo apt install --no-install-recommends cmake libgl-dev qt6-base-dev libqt6serialport6-dev libusb-1.0-0-dev
-
-The application and tools can then be configured and built like this:
-
-     cd DomesdayDuplicator/Linux-Application
-     cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo .
-     make -j8
-     sudo make install
-
-By default CMake will install into /usr/local.
-
-To install into /some/dir instead, add -DCMAKE_INSTALL_PREFIX=/some/dir to the cmake command.
 
 ## USB Device Permissions
 
@@ -164,7 +146,7 @@ Note that this permission does not become active until the user account has logg
 
 ![DdD-Main-Linux-DdD-Connected](https://user-images.githubusercontent.com/56382624/183903020-f71bbc63-6a0b-4262-917f-58093017e4c3.png)
 
-As you can see over 11 hours of capture time avalible  on a fully setup Linux Mint intall with a 2TB M.2 NVME drive.
+As you can see over 11 hours of capture time avalible on a fully setup Linux Mint intall with a 2TB M.2 NVME drive (10-bit packed)
 
 ![Advanced-Capture-Naming](https://user-images.githubusercontent.com/56382624/183903089-4cde72ba-fa5b-4d55-9aeb-efc186f5b9e8.png)
 
@@ -181,18 +163,13 @@ As you can see over 11 hours of capture time avalible  on a fully setup Linux Mi
 ![Player-Remote](https://user-images.githubusercontent.com/56382624/183903323-28b51b11-d5f3-4a76-87be-8b19d1ec30a7.png)
 
 
-
 ## Synopsis
 
-The Domesday Duplicator is a USB3 based DAQ capable of 40 million samples per second acquisition of analogue RF data.
+The Domesday Duplicator is a USB3 based DAQ capable of 40 million samples per second (20mhz of bandwith) aquisition of analogue RF data.
 
 The hardware is a USB3 based 10-bit analogue to digital converter designed to allow the backup of Domesday AIV LaserDiscs (as well as generic laserdiscs and now Tape/CD media) through the direct sampling of the RF data from the optical head (laser) of a LaserDisc player.
 
 The hardware/software solution is designed to act as a sampling front-end to the ld-decode (software decode of laserdiscs) project https://github.com/happycube/ld-decode and replaces the generic TV capture card to provide high-frequency sampling with 4 times the sample resolution.
-
-This project is currently work-in-progress and should be considered beta (until the decoding is proven modifications may be needed to the capture set-up).
-
-Please see http://www.domesday86.com/?page_id=978 for detailed documentation on the Domesday Duplicator and overall information about the Domesday86 project.
 
 There are 3 main components that make up the Domesday Duplicator:
 
@@ -206,7 +183,9 @@ Cypress FX3 SuperSpeed Explorer board - The FX3 is a low-cost USB3 development b
 
 The Domesday86 project is involved in the documentation and preservation of the BBC Domesday Project from 1986.  The Domesday project provided a set of analogue laserdiscs in a proprietary format (like standard laserdiscs but with some specific extensions only supported by the Philips VP415 laserdisc player).
 
-The Domesday Duplicator is intended to allow high-quality back-ups of the analogue information contained on the laserdiscs by bypassing most of the 30-year-old electronics in the VP415 player.  Direct RF sampling also allows all information on the laserdiscs to be stored (unlike conventional RGB sampling of the video output).  Since AIV laserdiscs are a combination of video, pictures, sound and data (as well as numerous VBI streams), direct RF sampling is the preferred method of preservation, witch also applys to colour under analouge video tape formats such as (S)VHS, Video 8, High8, BetaCam and so on.
+The Domesday Duplicator is intended to allow high-quality back-ups of the analogue information contained on the laserdiscs by bypassing most of the 30-year-old electronics in the VP415 player.  Direct RF sampling also allows all information on the laserdiscs to be stored (unlike conventional RGB sampling of the video output). 
+
+Since AIV laserdiscs are a combination of video, pictures, sound and data (as well as numerous VBI streams), direct RF sampling is the preferred method of preservation, witch also applys to colour under analouge video tape formats such as (S)VHS, Umatic, BetaMax, Video 8, High8, BetaCam and so on.
 
 ## Author
 
