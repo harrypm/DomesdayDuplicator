@@ -80,6 +80,14 @@ Hookup your RF sorce and Capture!
 
 ![Windows-DdD-App](https://user-images.githubusercontent.com/56382624/219953404-2ad85772-7fe3-40e8-a4b3-9ea61443736d.gif)
 
+# MacOS Software Installation 
+
+![DdD_MacOS_2023-07-15_at_9 09 46_PM](https://github.com/harrypm/DomesdayDuplicator/assets/56382624/6f90c2a6-5416-4c69-a258-17f4d4bdd818)
+
+Currently we have builds for MacOS with support for Apple Silicone M1/M2/M1 Max/M2 Max etc 
+
+[MacOS Builds](https://github.com/tzaeli/DomesdayDuplicator/releases)
+
 # Linux Software Installation
 
 To compile the software on Ubuntu/Debian based distros, you will need Qt5 installed as well as the necessary support packages
