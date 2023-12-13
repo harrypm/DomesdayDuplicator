@@ -70,13 +70,15 @@ All selected in this up position is 1111 or 2.02 Minimum Gain When dip’s 2-3-4
 
 # Windows Software Installation
 
-Today there is a [Windows Build](https://github.com/TokugawaHeavyIndustries/DomesdayDuplicator-WinBuild/releases/tag/v2.3) self-contained, just install USB libusb driver via ZigZag and you are ready to use the DdD.
+*Note there is chances of dropped samples every 10-25min, this is a software issue, as such the Windows Build is not recommended for high value archival captures, please use a Ubuntu/Mint Virtual machine USB live install or dedciated install for such.
 
-Enable Amaplitude messurement
+Today there is a [Windows Build](https://github.com/vrunk11/DomesdayDuplicator/releases/tag/fix_1.1) self-contained, just install USB libusb driver via [Zadig](https://zadig.akeo.ie/) and you are ready to use the DdD.
+
+Enable Amaplitude Messurement
 
 ![DomesdayDuplicator-Prefrences](https://user-images.githubusercontent.com/56382624/219953622-408a87f8-1f1c-450a-91b2-f2798673e27a.png)
 
-Hookup your RF sorce and Capture!
+Hookup your RF Tap and Capture!
 
 ![Windows-DdD-App](https://user-images.githubusercontent.com/56382624/219953404-2ad85772-7fe3-40e8-a4b3-9ea61443736d.gif)
 
@@ -84,7 +86,7 @@ Hookup your RF sorce and Capture!
 
 ![DdD_MacOS_2023-07-15_at_9 09 46_PM](https://github.com/harrypm/DomesdayDuplicator/assets/56382624/6f90c2a6-5416-4c69-a258-17f4d4bdd818)
 
-Currently we have builds for MacOS with support for Apple Silicone M1/M2/M1 Max/M2 Max etc 
+Currently we have builds for MacOS with support for Apple Silicone M1/M2/M1 Max/Ultra etc 
 
 [MacOS Builds](https://github.com/tzaeli/DomesdayDuplicator/releases)
 
@@ -121,19 +123,26 @@ And should be avalible for quick lanuch inside Linux Mint once pinned to pannel.
 
 By default CMake will install into `/usr/local`. To install into `/some/dir` instead, add `-DCMAKE_INSTALL_PREFIX=/some/dir` to the `cmake` command.
 
-
 ## USB Device Permissions
 
-In order for the GUI application to connect to the Domesday Duplicator USB device it is necessary to provide permissions for user-level access. For this you need to create a file called 40-domesdayduplicator.rules in the /etc/udev/rules.d directory (requires root permissions). The contents of the file should be as follows:
+In order for the GUI application to connect to the Domesday Duplicator USB 3.0 device it is necessary to provide permissions for user-level access. For this you need to the `/etc/udev/rules.d` directory as root via `sudo su` or via right click `open as root` in distrobutions like Linux Mint.
+
+Then create a text file and rename it to `40-domesdayduplicator.rules` inside that directory.
+
+The contents of the file should be as follows:
 
     # 1d50:603b - Domesday Duplicator
     SUBSYSTEM=="usb", ATTRS{idVendor}=="1d50", ATTRS{idProduct}=="603b", MODE="0666"
-    Once the file has been created, issue the following command to reload the USB configuration rules:
+
+Once the file has been created, use the following command in a termninal to reload the USB configuration rules:
 
     sudo udevadm control --reload-rules
 
-Serial port device permissions
-If you wish to use the automatic capture feature a serial connection between the Ubuntu PC and the laser video disc player is required (you will need an appropriate cable and USB to RS232 adapter). In order to access a serial device the Ubuntu user account must given the 'dialout' group permissions. This can be added to the current user account using the following command:
+## Serial port device permissions
+
+If you wish to use the automatic capture feature a serial connection between the Linux PC and LaserDisc players, this is required (you will need an RS232 Serial Port or a appropriate USB to Serial adapter). In order to access a serial device in a Ubuntu/Mint user account must given the `dialout` group permissions. 
+
+This can be added to the current user account using the following command:
 
     sudo usermod -a -G dialout $USER
 
