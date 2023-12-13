@@ -28,13 +28,13 @@ There is normally a 1-4 week manufacturing time but due to shipping costs its ch
 
 ## Required Files for Fabraciation!
 
-The Gerber files this .zip file containes the specifications of the bare board and ware its taces/pads go witch is 2 layers.
+The `gerber.zip` file containes the specifications of the bare board and ware its taces/pads go for parts, It is a 2 layer board.
 
-The BOM or Bill Of Materials is the parts to be aquired and soldered to the pads/holes on the board, this is in the Microsoft .XLSX spredsheet format.
+The BOM or Bill Of Materials is the parts to be aquired and soldered to the pads/holes on the board, this is in the Microsoft `.XLSX` spredsheet format which is industry standard as it allows notes.
 
-The POS File or Centroid file is the position data for though hole parts i,e positions to drill holes in the baord.
+The POS File or Centroid file is the position data for though hole parts i,e positions to drill holes in the board.
 
-All these files are clearly layed out in this repository allowing drag and drop fabricaiton.
+All these files are clearly layed out in this repository allowing for manual fabrication, or you can have [PCBWay](https://docs.google.com/document/d/1k2bPPwHPoG7xXpS1NCYEe3w_jD_ts0yRCp-2aQ6QoKY/) do it all for you! 
 
 ## Firmware & Flashing
 
