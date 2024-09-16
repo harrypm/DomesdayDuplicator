@@ -95,18 +95,12 @@ QString AdvancedNamingDialog::getFileName(bool isTestData)
             fileName += QString("_side%1").arg(ui->discSideSpinBox->value());
         }
 
-        // Require additional conditions to account for side 1 notes/mint without changing spinbox value
-        if (ui->notesCheckBox->isChecked() and notesHolding[ui->discSideSpinBox->value()].isNull()) {
+        if (ui->notesCheckBox->isChecked()) {
             fileName += "_" + ui->notesLineEdit->text();
-        } else {
-            fileName += "_" + notesHolding[ui->discSideSpinBox->value()];
         }
 
-        // Require additional conditions to account for side 1 notes/mint without changing spinbox value
-        if (ui->mintCheckBox->isChecked() and mintHolding[ui->discSideSpinBox->value()].isNull()) {
+        if (ui->mintCheckBox->isChecked()) {
             fileName += "_" + ui->mintLineEdit->text();
-        } else {
-            fileName += "_" + mintHolding[ui->discSideSpinBox->value()];
         }
 
         // Add the date/time stamp
@@ -128,8 +122,20 @@ bool AdvancedNamingDialog::getDurationChecked()
     return fileDurationBox;
 }
 
+// Enable or disable per-side notes
+void AdvancedNamingDialog::setPerSideNotesEnabled(bool enabled)
+{
+    perSideNotesEnabled = enabled;
+}
+
+// Enable or disable per-side mint marks
+void AdvancedNamingDialog::setPerSideMintEnabled(bool enabled)
+{
+    perSideMintEnabled = enabled;
+}
+
 // Update the GUI based on the state of the check boxes
-void AdvancedNamingDialog::updateGui(void)
+void AdvancedNamingDialog::updateGui()
 {
     if (ui->discTitleCheckBox->isChecked()) {
         ui->discTitleLineEdit->setEnabled(true);
@@ -186,26 +192,16 @@ void AdvancedNamingDialog::updateGui(void)
 }
 
 // Update the GUI and hold values from previous side input
-void AdvancedNamingDialog::updateSideHoldings(void)
+void AdvancedNamingDialog::updateSideHoldings()
 {
-    if (ui->mintCheckBox->isChecked()) {
-        mintHolding[discSideSpinBoxPrevVal] = ui->mintLineEdit->text();
-
-        if (mintHolding[ui->discSideSpinBox->value()].isNull()) {
-            ui->mintLineEdit->setText("");
-        } else {
-            ui->mintLineEdit->setText(mintHolding[ui->discSideSpinBox->value()]);
-        }
+    if (perSideNotesEnabled && ui->notesCheckBox->isChecked()) {
+        notesHolding[discSideSpinBoxPrevVal] = ui->notesLineEdit->text();
+        ui->notesLineEdit->setText(notesHolding[ui->discSideSpinBox->value()]);
     }
 
-    if (ui->notesCheckBox->isChecked()) {
-        notesHolding[discSideSpinBoxPrevVal] = ui->notesLineEdit->text();
-
-        if (notesHolding[ui->discSideSpinBox->value()].isNull()) {
-            ui->notesLineEdit->setText("");
-        } else {
-            ui->notesLineEdit->setText(notesHolding[ui->discSideSpinBox->value()]);
-        }
+    if (perSideMintEnabled && ui->mintCheckBox->isChecked()) {
+        mintHolding[discSideSpinBoxPrevVal] = ui->mintLineEdit->text();
+        ui->mintLineEdit->setText(mintHolding[ui->discSideSpinBox->value()]);
     }
 
     discSideSpinBoxPrevVal = ui->discSideSpinBox->value();
@@ -249,11 +245,9 @@ void AdvancedNamingDialog::on_mintCheckBox_clicked()
 void AdvancedNamingDialog::on_durationCheckBox_clicked()
 {
     updateGui();
-
 }
 
 void AdvancedNamingDialog::on_discSideSpinBox_valueChanged()
 {
     updateSideHoldings();
-
 }

@@ -35,6 +35,9 @@
 #else
     #include <sys/mman.h>
 #endif
+#ifdef __APPLE__
+    #include <iostream>
+#endif
 
 // Notes on transfer and disk buffering:
 //
@@ -291,7 +294,7 @@ UsbCapture::~UsbCapture()
 }
 
 // Run the capture thread
-void UsbCapture::run(void)
+void UsbCapture::run()
 {
     // Set up the libusb transfers
     struct libusb_transfer **usbTransfers = nullptr;
@@ -330,13 +333,22 @@ void UsbCapture::run(void)
     // Save the current scheduling policy and parameters
 #ifdef _WIN32
     // TODO: Implement pthread-win32 for scheduling on Windows
-#else
+#endif
+
+#ifdef _LINUX
     int oldSchedPolicy = sched_getscheduler(0);
     if (oldSchedPolicy == -1) oldSchedPolicy = SCHED_OTHER;
     struct sched_param oldSchedParam;
     if (sched_getparam(0, &oldSchedParam) == -1) oldSchedParam.sched_priority = 0;
 #endif
 
+#ifdef __APPLE__
+    int policy;
+    struct sched_param oldSchedParam;
+    pthread_getschedparam(pthread_self(), &policy, &oldSchedParam);
+#endif
+
+#ifdef _LINUX
     // Enable real-time scheduling for this thread
     int minSchedPriority = sched_get_priority_min(SCHED_RR);
     int maxSchedPriority = sched_get_priority_max(SCHED_RR);
@@ -353,6 +365,24 @@ void UsbCapture::run(void)
         // Continue anyway, but print a warning
         qInfo() << "UsbCapture::run(): Unable to enable real-time scheduling for capture thread";
     }
+#endif
+
+#ifdef __APPLE__
+    int minSchedPriority = sched_get_priority_min(SCHED_OTHER);
+    int maxSchedPriority = sched_get_priority_max(SCHED_OTHER);
+    struct sched_param schedParams;
+    if (minSchedPriority == -1 || maxSchedPriority == -1) {
+    	schedParams.sched_priority = 0;
+    } else {
+    	schedParams.sched_priority = (minSchedPriority + (3 * maxSchedPriority)) / 4;
+    }
+
+    if (pthread_setschedparam(pthread_self(), SCHED_OTHER, &schedParams) == 0) {	
+	std::cout << "UsbCapture::run(): Thread priority set with policy SCHED_OTHER" << std::endl;    
+    } else {
+    	std::cout << "UsbCapture::run(): Unable to set thread priority" << std::endl;
+    }
+#endif
 
     // Set up the initial transfers
     for (qint32 transferNumber = 0; transferNumber < SIMULTANEOUSTRANSFERS; transferNumber++) {
@@ -419,10 +449,18 @@ void UsbCapture::run(void)
 
 #ifdef _WIN32
     // TODO: Implement pthread-win32 for scheduling on Windows
-#else
+#endif
+
+#ifdef _LINUX
     // Return to the original scheduling policy while we're cleaning up
     if (sched_setscheduler(0, oldSchedPolicy, &oldSchedParam) == -1) {
         qDebug() << "UsbCapture::run(): Unable to restore original scheduling policy";
+    }
+#endif
+
+#ifdef __APPLE__
+    if (pthread_setschedparam(pthread_self(), policy, &schedParams) != 0) {
+    	std::cout << "UsbCapture::run(): Unable to restore original scheduling policy" << std::endl;
     }
 #endif
 
@@ -460,7 +498,7 @@ void UsbCapture::run(void)
 
 // Allocate memory for the disk buffers
 // Note: Using vectors would be neater, but they are just too slow
-void UsbCapture::allocateDiskBuffers(void)
+void UsbCapture::allocateDiskBuffers()
 {
     qDebug() << "UsbCapture::allocateDiskBuffers(): Allocating" << (1ULL * TRANSFERSIZE * TRANSFERSPERDISKBUFFER * NUMBEROFDISKBUFFERS) / (1024 * 1024) << "MiB memory for disk buffers";
     // Allocate the disk buffers
@@ -509,7 +547,7 @@ void UsbCapture::allocateDiskBuffers(void)
 }
 
 // Free memory used for the disk buffers
-void UsbCapture::freeDiskBuffers(void)
+void UsbCapture::freeDiskBuffers()
 {
     qDebug() << "UsbCapture::freeDiskBuffers(): Freeing disk buffer memory";
     // Free up the allocated disk buffers
@@ -540,7 +578,7 @@ void UsbCapture::freeDiskBuffers(void)
 }
 
 // Thread for processing disk buffers
-void UsbCapture::runDiskBuffers(void)
+void UsbCapture::runDiskBuffers()
 {
     qDebug() << "UsbCapture::runDiskBuffers(): Thread started";
 
@@ -845,7 +883,7 @@ void UsbCapture::writeConversionBuffer(QFile *outputFile, qint32 numBytes)
 }
 
 // Start capturing
-void UsbCapture::startTransfer(void)
+void UsbCapture::startTransfer()
 {
     // Flip isOkToRename back to false; new capture
     isOkToRename = false;
@@ -856,26 +894,26 @@ void UsbCapture::startTransfer(void)
 }
 
 // Stop capturing
-void UsbCapture::stopTransfer(void)
+void UsbCapture::stopTransfer()
 {
     // Set the transfer flags to abort
     transferAbort = true;
 }
 
 // Return the current number of transfers completed
-qint32 UsbCapture::getNumberOfTransfers(void)
+qint32 UsbCapture::getNumberOfTransfers()
 {
     return statistics.transferCount;
 }
 
 // Return the current number of disk buffers written to disk
-qint32 UsbCapture::getNumberOfDiskBuffersWritten(void)
+qint32 UsbCapture::getNumberOfDiskBuffersWritten()
 {
     return numberOfDiskBuffersWritten;
 }
 
 // Return the last error text
-QString UsbCapture::getLastError(void)
+QString UsbCapture::getLastError()
 {
     return lastError;
 }

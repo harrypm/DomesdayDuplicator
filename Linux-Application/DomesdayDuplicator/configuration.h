@@ -56,49 +56,47 @@ public:
         autoDetect,
     };
 
-    // Define the possible amplitude graph types
-    enum GraphType {
-        noGraph,
-        QCPMean,
-    };
-
     explicit Configuration(QObject *parent = nullptr);
 
-    void writeConfiguration(void);
-    void readConfiguration(void);
+    void writeConfiguration();
+    void readConfiguration();
 
     // Get and set methods
-    void setDefault(void);
+    void setDefault();
 
     void setCaptureDirectory(QString captureDirectory);
-    QString getCaptureDirectory(void);
+    QString getCaptureDirectory();
     void setCaptureFormat(CaptureFormat captureFormat);
-    CaptureFormat getCaptureFormat(void);
+    CaptureFormat getCaptureFormat();
     void setUsbVid(quint16 vid);
-    quint16 getUsbVid(void);
+    quint16 getUsbVid();
     void setUsbPid(quint16 pid);
-    quint16 getUsbPid(void);
+    quint16 getUsbPid();
     void setSerialSpeed(SerialSpeeds serialSpeed);
-    SerialSpeeds getSerialSpeed(void);
+    SerialSpeeds getSerialSpeed();
     void setSerialDevice(QString serialDevice);
-    QString getSerialDevice(void);
+    QString getSerialDevice();
     void setKeyLock(bool keyLock);
-    bool getKeyLock(void);
-    void setGraphType(GraphType graphType);
-    GraphType getGraphType(void);
-    bool getAmplitudeEnabled(void);
-    void setAmplitudeEnabled(bool amplitudeEnabled);
+    bool getKeyLock();
+    bool getPerSideNotesEnabled();
+    void setPerSideNotesEnabled(bool enabled);
+    bool getPerSideMintEnabled();
+    void setPerSideMintEnabled(bool enabled);
+    bool getAmplitudeLabelEnabled();
+    void setAmplitudeLabelEnabled(bool enabled);
+    bool getAmplitudeChartEnabled();
+    void setAmplitudeChartEnabled(bool enabled);
 
     void setMainWindowGeometry(QByteArray mainWindowGeometry);
-    QByteArray getMainWindowGeometry(void);
+    QByteArray getMainWindowGeometry();
     void setPlayerRemoteDialogGeometry(QByteArray playerRemoteDialogGeometry);
-    QByteArray getPlayerRemoteDialogGeometry(void);
+    QByteArray getPlayerRemoteDialogGeometry();
     void setAdvancedNamingDialogGeometry(QByteArray advancedNamingDialogGeometry);
-    QByteArray getAdvancedNamingDialogGeometry(void);
+    QByteArray getAdvancedNamingDialogGeometry();
     void setAutomaticCaptureDialogGeometry(QByteArray automaticCaptureDialogGeometry);
-    QByteArray getAutomaticCaptureDialogGeometry(void);
+    QByteArray getAutomaticCaptureDialogGeometry();
     void setConfigurationDialogGeometry(QByteArray configurationDialogGeometry);
-    QByteArray getConfigurationDialogGeometry(void);
+    QByteArray getConfigurationDialogGeometry();
 
 signals:
 
@@ -108,7 +106,7 @@ private:
     QSettings *configuration;
 
     // Note: Configuration is organised by the following top-level labels
-    // Capture, USB, PIC (player integrated capture), UI (includes optional UI features [currently RF amplitude RMS and graphing])
+    // Capture, USB, PIC (player integrated capture), UI
     struct Capture {
         QString captureDirectory;
         CaptureFormat captureFormat;
@@ -126,8 +124,10 @@ private:
     };
 
     struct Ui {
-        GraphType graphType;
-        bool amplitudeEnabled;
+        bool perSideNotesEnabled;
+        bool perSideMintEnabled;
+        bool amplitudeLabelEnabled;
+        bool amplitudeChartEnabled;
     };
 
     // Window geometry and settings
@@ -152,8 +152,6 @@ private:
     CaptureFormat convertIntToCaptureFormat(qint32 captureInt);
     qint32 convertSerialSpeedsToInt(SerialSpeeds serialSpeeds);
     SerialSpeeds convertIntToSerialSpeeds(qint32 serialInt);
-    qint32 convertGraphTypeToInt(GraphType graphType);
-    GraphType convertIntToGraphType(qint32 graphInt);
 };
 
 #endif // CONFIGURATION_H

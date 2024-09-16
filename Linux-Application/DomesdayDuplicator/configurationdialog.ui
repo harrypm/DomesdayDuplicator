@@ -19,7 +19,7 @@
   <property name="windowTitle">
    <string>Preferences</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
+  <layout class="QVBoxLayout" name="preferencesVerticalLayout">
    <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="minimumSize">
@@ -35,7 +35,7 @@
       <attribute name="title">
        <string>Capture</string>
       </attribute>
-      <layout class="QVBoxLayout" name="verticalLayout_2">
+      <layout class="QVBoxLayout" name="captureVerticalLayout">
        <item>
         <layout class="QHBoxLayout" name="captureDirectoryHorizontalLayout">
          <item>
@@ -138,7 +138,7 @@
       <attribute name="title">
        <string>USB</string>
       </attribute>
-      <layout class="QVBoxLayout" name="verticalLayout_2">
+      <layout class="QVBoxLayout" name="usbVerticalLayout">
        <item>
         <layout class="QGridLayout" name="usbDeviceGridLayout">
          <item row="0" column="0">
@@ -212,7 +212,7 @@
       <attribute name="title">
        <string>Player Control</string>
       </attribute>
-      <layout class="QVBoxLayout" name="verticalLayout_2">
+      <layout class="QVBoxLayout" name="playerControlVerticalLayout">
        <item>
         <layout class="QGridLayout" name="serialDeviceGridLayout">
          <item row="0" column="0">
@@ -311,47 +311,25 @@
       <attribute name="title">
        <string>User Interface</string>
       </attribute>
-      <layout class="QVBoxLayout" name="verticalLayout_2">
+      <layout class="QVBoxLayout" name="userInterfaceVerticalLayout">
        <item>
-        <widget class="QLabel" name="amplitudeLabel">
+        <widget class="QLabel" name="advancedNamingLabel">
          <property name="text">
-          <string>RF Signal Amplitude Processing:</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+          <string>Advanced capture naming:</string>
          </property>
         </widget>
        </item>
        <item>
-        <spacer name="verticalSpacer_7">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
-         </property>
-         <property name="sizeType">
-          <enum>QSizePolicy::Fixed</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>20</width>
-           <height>12</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <item>
-        <widget class="QLabel" name="textLabelOptionsLabel">
+        <widget class="QCheckBox" name="perSideNotesCheckBox">
          <property name="text">
-          <string>Text Label Options (Low CPU usage):</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+          <string>Reset notes when disc side changes</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QCheckBox" name="amplitudeProcessingCheckBox">
+        <widget class="QCheckBox" name="perSideMintCheckBox">
          <property name="text">
-          <string>RMS (Average)</string>
+          <string>Reset mint marks when disc side changes</string>
          </property>
         </widget>
        </item>
@@ -372,9 +350,9 @@
         </spacer>
        </item>
        <item>
-        <widget class="QLabel" name="graphingOptionsLabel">
+        <widget class="QLabel" name="amplitudeLabel">
          <property name="text">
-          <string>Graphing Options (Higher CPU usage):</string>
+          <string>RF signal amplitude display:</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
@@ -382,19 +360,16 @@
         </widget>
        </item>
        <item>
-        <widget class="QRadioButton" name="amplitudeGraphRadioButton">
+        <widget class="QCheckBox" name="amplitudeLabelCheckBox">
          <property name="text">
-          <string>Mean Amplitude (QCP)</string>
+          <string>Show RMS amplitude as number (low CPU usage)</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QRadioButton" name="noGraphButton">
+        <widget class="QCheckBox" name="amplitudeChartCheckBox">
          <property name="text">
-          <string>None</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
+          <string>Show RMS amplitude as chart (higher CPU usage)</string>
          </property>
         </widget>
        </item>
@@ -434,13 +409,21 @@
   </layout>
  </widget>
  <tabstops>
+  <tabstop>tabWidget</tabstop>
   <tabstop>captureDirectoryLineEdit</tabstop>
+  <tabstop>captureDirectoryPushButton</tabstop>
   <tabstop>saveAsTenBitRadioButton</tabstop>
   <tabstop>saveAsSixteenBitRadioButton</tabstop>
+  <tabstop>saveAs10BitCdRadioButton</tabstop>
   <tabstop>vendorIdLineEdit</tabstop>
   <tabstop>productIdLineEdit</tabstop>
   <tabstop>serialDeviceComboBox</tabstop>
   <tabstop>serialSpeedComboBox</tabstop>
+  <tabstop>keyLockCheckBox</tabstop>
+  <tabstop>perSideNotesCheckBox</tabstop>
+  <tabstop>perSideMintCheckBox</tabstop>
+  <tabstop>amplitudeLabelCheckBox</tabstop>
+  <tabstop>amplitudeChartCheckBox</tabstop>
  </tabstops>
  <resources/>
  <connections>

@@ -47,6 +47,9 @@ public:
     QString getFileName(bool isTestData);
     bool getDurationChecked();
 
+    void setPerSideNotesEnabled(bool enabled);
+    void setPerSideMintEnabled(bool enabled);
+
 private slots:
     void on_discTitleCheckBox_clicked();
     void on_discTypeCheckBox_clicked();
@@ -61,11 +64,14 @@ private slots:
 private:
     Ui::AdvancedNamingDialog *ui;
 
-    void updateGui(void);
-    void updateSideHoldings(void);
+    void updateGui();
+    void updateSideHoldings();
+
     int discSideSpinBoxPrevVal = 1;
-    QString notesHolding[99];
-    QString mintHolding[99];
+    bool perSideNotesEnabled = false;
+    QString notesHolding[100];
+    bool perSideMintEnabled = false;
+    QString mintHolding[100];
 };
 
 #endif // ADVANCEDNAMINGDIALOG_H
