@@ -35,12 +35,14 @@ target_link_libraries(DomesdayDuplicator PRIVATE
     ${LibUSB_LIBRARIES}
     ${SWRESAMPLE_LIBRARIES}
     ${AVUTIL_LIBRARIES}
+    ${FLAC_LIBRARIES}
 )
 
 target_include_directories(DomesdayDuplicator PRIVATE
     ${LibUSB_INCLUDE_DIRS}
     ${SWRESAMPLE_INCLUDE_DIRS}
     ${AVUTIL_INCLUDE_DIRS}
+    ${FLAC_INCLUDE_DIRS}
     .
 )
 

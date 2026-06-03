@@ -4,11 +4,13 @@ This version of DomesdayDuplicator includes real-time downsampling support for L
 
 ## Dependencies
 
-The downsampling feature requires FFmpeg's `libswresample` library for high-quality audio resampling.
+The capture and downsampling path requires:
+- FFmpeg's `libswresample`/`libavutil` for high-quality real-time resampling
+- `libFLAC` (v1.5.0 or newer) for native multithreaded FLAC encoding
 
 ### Ubuntu/Debian
 ```bash
-sudo apt install libswresample-dev libavutil-dev
+sudo apt install libswresample-dev libavutil-dev libflac-dev
 ```
 
 ### Red Hat/CentOS/Fedora
@@ -50,20 +52,22 @@ The application now supports three new capture formats:
 
 - **Real-time processing**: Downsampling occurs during capture, not post-processing
 - **High quality**: Uses FFmpeg's libswresample with proper anti-aliasing filters
+- **Native FLAC encode**: Uses libFLAC multithreaded encoder (default thread count: 80% of detected CPU cores)
 - **Memory efficient**: Processes data in chunks without excessive buffering
-- **Cross-platform**: Compatible with system FFmpeg libraries on Linux, Windows, and macOS
+- **Cross-platform**: Compatible with system FFmpeg/libFLAC libraries on Linux, Windows, and macOS
 
 ## Verification
 
 You can verify the resampling is working correctly by checking the test output:
 ```bash
 cd build/DomesdayDuplicator
-ldd DomesdayDuplicator | grep swresample
+ldd DomesdayDuplicator | grep -E "swresample|FLAC"
 ```
 
 Should show system library linkage like:
 ```
 libswresample.so.3 => /lib/x86_64-linux-gnu/libswresample.so.3
+libFLAC.so.12 => /lib/x86_64-linux-gnu/libFLAC.so.12
 ```
 
 ## Workflow Testing

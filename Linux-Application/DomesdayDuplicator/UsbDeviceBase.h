@@ -12,6 +12,7 @@
 #include <vector>
 #include <atomic>
 #include <thread>
+#include <FLAC/stream_encoder.h>
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -28,7 +29,7 @@ public:
         Signed16BitQuarter,
         Unsigned10Bit,
         Unsigned10Bit4to1Decimation,
-        Signed16BitFlacOnTheFly,         // on-the-fly FLAC via ffmpeg+flac pipe (any sample rate)
+        Signed16BitFlacOnTheFly,         // on-the-fly FLAC via native libFLAC encoder (any sample rate)
     };
     enum class TransferResult
     {
@@ -58,7 +59,7 @@ public:
     void SendConfigurationCommand(const std::string& preferredDevicePath, bool testMode);
 
     // Capture methods
-    bool StartCapture(const std::filesystem::path& filePath, CaptureFormat format, const std::string& preferredDevicePath, bool isTestMode, bool useSmallUsbTransfers, bool useAsyncFileIo, size_t usbTransferQueueSizeInBytes, size_t diskBufferQueueSizeInBytes, int flacCompressionLevel = 8, int flacOutputSampleRateInHz = 20000000);
+    bool StartCapture(const std::filesystem::path& filePath, CaptureFormat format, const std::string& preferredDevicePath, bool isTestMode, bool useSmallUsbTransfers, bool useAsyncFileIo, size_t usbTransferQueueSizeInBytes, size_t diskBufferQueueSizeInBytes, int flacCompressionLevel = 8, int flacOutputSampleRateInHz = 20000000, int flacBitsPerSample = 8);
     void StopCapture();
     bool GetTransferInProgress() const;
     TransferResult GetTransferResult() const;
@@ -154,6 +155,10 @@ private:
     bool ProcessSequenceMarkersAndUpdateSampleMetrics(size_t diskBufferIndex, uint16_t& minValue, uint16_t& maxValue, size_t& minClippedCount, size_t& maxClippedCount);
     bool VerifyTestSequence(size_t diskBufferIndex);
     bool ConvertRawSampleData(size_t diskBufferIndex, CaptureFormat captureFormat, std::vector<uint8_t>& outputBuffer) const;
+    bool InitializeFlacEncoder(int compressionLevel, int outputSampleRateInHz, int bitsPerSample);
+    bool EncodeSigned16BufferToFlac(const std::vector<uint8_t>& signed16Buffer);
+    void FinalizeFlacEncoder();
+    static FLAC__StreamEncoderWriteStatus FlacWriteCallback(const FLAC__StreamEncoder* encoder, const FLAC__byte buffer[], size_t bytes, uint32_t samples, uint32_t currentFrame, void* clientData);
 
     // Utility methods
     bool SetCurrentProcessRealtimePriority(ProcessPriorityRestoreInfo& priorityRestoreInfo);
@@ -216,13 +221,12 @@ private:
     HANDLE windowsCaptureOutputFileHandle;
 #endif
 
-    // On-the-fly FLAC pipe state
-    FILE* flacPipeHandle = nullptr;
-#ifdef _WIN32
-    HANDLE flacPipeProcess = INVALID_HANDLE_VALUE;
-    HANDLE flacReadPipeHandle = INVALID_HANDLE_VALUE;
-#endif
-    std::thread flacReaderThread;
+    // On-the-fly FLAC encoder state
+    FLAC__StreamEncoder* flacEncoder = nullptr;
+    int configuredFlacCompressionLevel = 8;
+    int configuredFlacOutputSampleRateInHz = 20000000;
+    int configuredFlacBitsPerSample = 8;
+    std::vector<FLAC__int32> flacInputSamples;
 
     // Sequence/test data state
     SequenceState sequenceState = SequenceState::Sync;

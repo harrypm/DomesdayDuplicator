@@ -132,7 +132,7 @@ private:
         QString captureDirectory;
         CaptureFormat captureFormat;
         int flacCompressionLevel;
-        int flacOutputFormat;  // 0 = .flac, 1 = .ldf
+        int flacOutputFormat;  // 0 = .flac (8-bit), 1 = .flac (16-bit), 2 = .ldf
         int sampleRate;  // Output sample rate in kHz (e.g. 20000 = 20 MSPS). Default 20000.
     };
 

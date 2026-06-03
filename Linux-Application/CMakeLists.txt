@@ -28,6 +28,28 @@ endif()
 
 pkg_check_modules(SWRESAMPLE REQUIRED libswresample)
 pkg_check_modules(AVUTIL REQUIRED libavutil)
+pkg_check_modules(FLAC REQUIRED flac>=1.5.0)
+
+if(NOT CMAKE_CROSSCOMPILING)
+    include(CheckCXXSourceRuns)
+    set(CMAKE_REQUIRED_INCLUDES ${FLAC_INCLUDE_DIRS})
+    set(CMAKE_REQUIRED_LIBRARIES ${FLAC_LIBRARIES})
+    check_cxx_source_runs("
+        #include <FLAC/stream_encoder.h>
+        int main() {
+            FLAC__StreamEncoder* encoder = FLAC__stream_encoder_new();
+            if (!encoder) return 1;
+            unsigned int status = FLAC__stream_encoder_set_num_threads(encoder, 2);
+            FLAC__stream_encoder_delete(encoder);
+            return status == FLAC__STREAM_ENCODER_SET_NUM_THREADS_NOT_COMPILED_WITH_MULTITHREADING_ENABLED ? 1 : 0;
+        }"
+        FLAC_MULTITHREADING_AVAILABLE)
+    unset(CMAKE_REQUIRED_INCLUDES)
+    unset(CMAKE_REQUIRED_LIBRARIES)
+    if(NOT FLAC_MULTITHREADING_AVAILABLE)
+        message(FATAL_ERROR "libFLAC must be compiled with multithreading support enabled")
+    endif()
+endif()
 
 add_subdirectory(DomesdayDuplicator)
 add_subdirectory(dddconv)

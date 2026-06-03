@@ -130,6 +130,14 @@ void Configuration::readConfiguration()
         else if (sr == 2) sr = 10000;
         settings.capture.sampleRate = sr;
     }
+    // Migrate legacy FLAC output selector values:
+    // old: 0=.flac, 1=.ldf
+    // new: 0=.flac (8-bit), 1=.flac (16-bit), 2=.ldf
+    if (settings.capture.captureFormat == CaptureFormat::ldfCompressed &&
+        settings.capture.flacOutputFormat == 1)
+    {
+        settings.capture.flacOutputFormat = 2;
+    }
     configuration->endGroup();
 
     // UI

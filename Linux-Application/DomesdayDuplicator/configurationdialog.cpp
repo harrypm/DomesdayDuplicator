@@ -40,7 +40,7 @@ ConfigurationDialog::ConfigurationDialog(QWidget *parent) :
 
     // Build the captureFormatComboBox
     ui->captureFormatComboBox->clear();
-    ui->captureFormatComboBox->addItem("8-bit FLAC", Configuration::CaptureFormat::flacDirect);
+    ui->captureFormatComboBox->addItem("FLAC", Configuration::CaptureFormat::flacDirect);
     ui->captureFormatComboBox->addItem("16-bit Signed Raw", Configuration::CaptureFormat::sixteenBitSigned);
     ui->captureFormatComboBox->addItem("10-bit Packed Unsigned", Configuration::CaptureFormat::tenBitPacked);
     
@@ -49,8 +49,9 @@ ConfigurationDialog::ConfigurationDialog(QWidget *parent) :
     
     // Build the flacOutputFormatComboBox
     ui->flacOutputFormatComboBox->clear();
-    ui->flacOutputFormatComboBox->addItem(".flac - Direct FLAC", 0);
-    ui->flacOutputFormatComboBox->addItem(".ldf - ld-compress style", 1);
+    ui->flacOutputFormatComboBox->addItem(".flac - Direct FLAC (8-bit)", 0);
+    ui->flacOutputFormatComboBox->addItem(".flac - Direct FLAC (16-bit)", 1);
+    ui->flacOutputFormatComboBox->addItem(".ldf - ld-compress style", 2);
 
     // Build the flacCompressionLevelComboBox
     ui->flacCompressionLevelComboBox->clear();
@@ -133,6 +134,9 @@ void ConfigurationDialog::loadConfiguration(const Configuration& configuration)
     } else if (configFormat == Configuration::CaptureFormat::sixteenBitSigned_Quarter) {
         ui->captureFormatComboBox->setCurrentIndex(ui->captureFormatComboBox->findData(static_cast<unsigned int>(Configuration::CaptureFormat::sixteenBitSigned)));
         storedSampleRateKHz = 10000;
+    } else if (configFormat == Configuration::CaptureFormat::ldfCompressed) {
+        // LDF is chosen via FLAC output format drop-down.
+        ui->captureFormatComboBox->setCurrentIndex(ui->captureFormatComboBox->findData(static_cast<unsigned int>(Configuration::CaptureFormat::flacDirect)));
     } else {
         ui->captureFormatComboBox->setCurrentIndex(ui->captureFormatComboBox->findData(static_cast<unsigned int>(configFormat)));
     }
@@ -142,7 +146,15 @@ void ConfigurationDialog::loadConfiguration(const Configuration& configuration)
     if (sampleRateItemIndex < 0) sampleRateItemIndex = 0;  // fallback to first item
     ui->sampleRateComboBox->setCurrentIndex(sampleRateItemIndex);
     ui->flacCompressionLevelComboBox->setCurrentIndex(ui->flacCompressionLevelComboBox->findData(configuration.getFlacCompressionLevel()));
-    ui->flacOutputFormatComboBox->setCurrentIndex(configuration.getFlacOutputFormat());
+    int flacOutputFormat = configuration.getFlacOutputFormat();
+    if (configFormat == Configuration::CaptureFormat::ldfCompressed) {
+        // Legacy configs used index 1 for LDF; index 2 is used in newer builds.
+        flacOutputFormat = 2;
+    }
+    if (flacOutputFormat < 0 || flacOutputFormat > 2) {
+        flacOutputFormat = 0;
+    }
+    ui->flacOutputFormatComboBox->setCurrentIndex(flacOutputFormat);
 
     // USB
     ui->vendorIdLineEdit->setText(QString::number(configuration.getUsbVid()));
@@ -231,7 +243,7 @@ void ConfigurationDialog::saveConfiguration(Configuration& configuration)
     }
     // For FLAC: choose ldfCompressed vs flacDirect based on output format dropdown
     else if (baseFormat == Configuration::CaptureFormat::flacDirect) {
-        if (flacOutputFormat == 1) {
+        if (flacOutputFormat == 2) {
             finalFormat = Configuration::CaptureFormat::ldfCompressed;
         }
         // else stay as flacDirect; sample rate stored separately as kHz
@@ -706,7 +718,7 @@ void ConfigurationDialog::onCaptureFormatChanged(int index)
     ui->sampleRateComboBox->clear();
 
     if (selectedFormat == Configuration::CaptureFormat::flacDirect) {
-        // FLAC via ffmpeg soxr — any rate works; offer all useful RF digitisation rates
+        // Native FLAC path supports arbitrary target rates via software resampling.
         ui->sampleRateComboBox->addItem("40 MSPS",                40000);
         ui->sampleRateComboBox->addItem("28 MSPS",                28000);
         ui->sampleRateComboBox->addItem("24 MSPS (S-VHS/Video8)", 24000);

@@ -34,6 +34,7 @@ jobs:
             libusb-1.0-0-dev \
             libswresample-dev \
             libavutil-dev \
+            libflac-dev \
             qt6-base-dev \
             qt6-base-dev-tools \
             libqt6widgets6 \
@@ -92,6 +93,31 @@ jobs:
           wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
           chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-qt-x86_64.AppImage
 
+          LDCONFIG_BIN="$(command -v ldconfig || true)"
+          if [ -z "$LDCONFIG_BIN" ]; then
+            if [ -x /sbin/ldconfig ]; then
+              LDCONFIG_BIN=/sbin/ldconfig
+            elif [ -x /usr/sbin/ldconfig ]; then
+              LDCONFIG_BIN=/usr/sbin/ldconfig
+            else
+              echo "Unable to locate ldconfig for runtime library resolution"
+              exit 1
+            fi
+          fi
+
+          LIBUSB_SO="$("$LDCONFIG_BIN" -p | awk '/libusb-1\\.0\\.so\\.0/{print $NF; exit}')"
+          LIBSWRESAMPLE_SO="$("$LDCONFIG_BIN" -p | awk '/libswresample\\.so/{print $NF; exit}')"
+          LIBAVUTIL_SO="$("$LDCONFIG_BIN" -p | awk '/libavutil\\.so/{print $NF; exit}')"
+          LIBFLAC_SO="$("$LDCONFIG_BIN" -p | awk '/libFLAC\\.so/{print $NF; exit}')"
+
+          for lib_var in LIBUSB_SO LIBSWRESAMPLE_SO LIBAVUTIL_SO LIBFLAC_SO; do
+            lib_path="${!lib_var:-}"
+            if [ -z "$lib_path" ] || [ ! -f "$lib_path" ]; then
+              echo "Failed to resolve required runtime library for $lib_var"
+              exit 1
+            fi
+          done
+
           ./linuxdeploy-x86_64.AppImage \
             --appdir AppDir \
             --executable AppDir/usr/bin/DomesdayDuplicator \
@@ -99,6 +125,10 @@ jobs:
             --executable AppDir/usr/bin/dddutil \
             --desktop-file AppDir/usr/share/applications/domesdayduplicator.desktop \
             --icon-file AppDir/usr/share/icons/hicolor/256x256/apps/domesdayduplicator.png \
+            --library "$LIBUSB_SO" \
+            --library "$LIBSWRESAMPLE_SO" \
+            --library "$LIBAVUTIL_SO" \
+            --library "$LIBFLAC_SO" \
             --plugin qt \
             --output appimage
 

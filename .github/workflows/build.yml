@@ -29,6 +29,7 @@ jobs:
           libusb-1.0-0-dev \
           libswresample-dev \
           libavutil-dev \
+          libflac-dev \
           qt6-base-dev \
           qt6-base-dev-tools \
           libqt6widgets6 \
@@ -68,8 +69,27 @@ jobs:
         #!/bin/bash
         echo "DomesdayDuplicator Linux Installation"
         echo "====================================="
-        echo "Prerequisites: libusb-1.0-0 libswresample3 libavutil56 qt6-base"
-        echo "Install with: sudo apt install libusb-1.0-0 libswresample3 libavutil56 qt6-base"
+        echo "Prerequisites: libusb, FFmpeg runtime libs, FLAC runtime libs, Qt6 Widgets/SerialPort, OpenGL, xkbcommon"
+        PKGS=(libusb-1.0-0 libqt6core6 libqt6gui6 libqt6widgets6 libqt6serialport6 libgl1 libglu1-mesa libxkbcommon0)
+        for candidate in libflac12 libflac8; do
+          if apt-cache show "$candidate" >/dev/null 2>&1; then
+            PKGS+=("$candidate")
+            break
+          fi
+        done
+        for candidate in libswresample4 libswresample3; do
+          if apt-cache show "$candidate" >/dev/null 2>&1; then
+            PKGS+=("$candidate")
+            break
+          fi
+        done
+        for candidate in libavutil57 libavutil56; do
+          if apt-cache show "$candidate" >/dev/null 2>&1; then
+            PKGS+=("$candidate")
+            break
+          fi
+        done
+        echo "Install with: sudo apt install ${PKGS[*]}"
         echo ""
         echo "To run: ./DomesdayDuplicator"
         chmod +x DomesdayDuplicator dddconv dddutil
@@ -110,7 +130,7 @@ jobs:
           ubuntu:22.04 bash -c "
             apt update && apt install -y \
               build-essential cmake pkg-config \
-              libusb-1.0-0-dev libswresample-dev libavutil-dev \
+              libusb-1.0-0-dev libswresample-dev libavutil-dev libflac-dev \
               qt6-base-dev qt6-base-dev-tools libqt6widgets6 \
               libqt6serialport6-dev libgl1-mesa-dev \
               libglu1-mesa-dev libxkbcommon-dev
@@ -146,8 +166,27 @@ jobs:
         #!/bin/bash
         echo "DomesdayDuplicator Linux ARM64 Installation"
         echo "=========================================="
-        echo "Prerequisites: libusb-1.0-0 libswresample3 libavutil56 qt6-base"
-        echo "Install with: sudo apt install libusb-1.0-0 libswresample3 libavutil56 qt6-base"
+        echo "Prerequisites: libusb, FFmpeg runtime libs, FLAC runtime libs, Qt6 Widgets/SerialPort, OpenGL, xkbcommon"
+        PKGS=(libusb-1.0-0 libqt6core6 libqt6gui6 libqt6widgets6 libqt6serialport6 libgl1 libglu1-mesa libxkbcommon0)
+        for candidate in libflac12 libflac8; do
+          if apt-cache show "$candidate" >/dev/null 2>&1; then
+            PKGS+=("$candidate")
+            break
+          fi
+        done
+        for candidate in libswresample4 libswresample3; do
+          if apt-cache show "$candidate" >/dev/null 2>&1; then
+            PKGS+=("$candidate")
+            break
+          fi
+        done
+        for candidate in libavutil57 libavutil56; do
+          if apt-cache show "$candidate" >/dev/null 2>&1; then
+            PKGS+=("$candidate")
+            break
+          fi
+        done
+        echo "Install with: sudo apt install ${PKGS[*]}"
         echo ""
         echo "To run: ./DomesdayDuplicator"
         chmod +x DomesdayDuplicator dddconv dddutil
@@ -184,6 +223,7 @@ jobs:
           mingw-w64-x86_64-pkg-config
           mingw-w64-x86_64-libusb
           mingw-w64-x86_64-ffmpeg
+          mingw-w64-x86_64-flac
           mingw-w64-x86_64-qt6-base
           mingw-w64-x86_64-qt6-tools
           mingw-w64-x86_64-qt6-serialport
@@ -247,7 +287,7 @@ jobs:
       run: |
         # Fix cmake conflict
         brew uninstall cmake || true
-        brew install cmake pkg-config libusb ffmpeg qt6
+        brew install cmake pkg-config libusb ffmpeg flac qt6
     
     - name: Build
       working-directory: Linux-Application
@@ -319,7 +359,7 @@ jobs:
       run: |
         # Fix cmake conflict
         brew uninstall cmake || true
-        brew install cmake pkg-config libusb ffmpeg qt6
+        brew install cmake pkg-config libusb ffmpeg flac qt6
     
     - name: Build
       working-directory: Linux-Application

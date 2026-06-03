@@ -1,82 +1,11 @@
 #include "UsbDeviceBase.h"
 #ifdef _WIN32
 #include <memoryapi.h>
-#include <io.h>
-#include <fcntl.h>
-
-// Opens a cmd.exe pipe without showing a console window.
-// Returns the write-end FILE* (for ffmpeg stdin) and stores the process handle and
-// a read HANDLE for the process stdout (flac output).
-static FILE* openPipeNoWindow(const std::string& cmd, HANDLE& outProcess, HANDLE& outReadPipe)
-{
-    outProcess = INVALID_HANDLE_VALUE;
-    outReadPipe = INVALID_HANDLE_VALUE;
-
-    SECURITY_ATTRIBUTES sa = {};
-    sa.nLength = sizeof(sa);
-    sa.bInheritHandle = TRUE;
-
-    // Stdin pipe: our process writes to hWrite, child reads from hRead
-    HANDLE hStdinRead, hStdinWrite;
-    if (!CreatePipe(&hStdinRead, &hStdinWrite, &sa, 0))
-        return nullptr;
-    SetHandleInformation(hStdinWrite, HANDLE_FLAG_INHERIT, 0); // write end is ours, non-inheritable
-
-    // Stdout pipe: child writes to hStdoutWrite, our process reads from hStdoutRead
-    HANDLE hStdoutRead, hStdoutWrite;
-    if (!CreatePipe(&hStdoutRead, &hStdoutWrite, &sa, 0))
-    {
-        CloseHandle(hStdinRead);
-        CloseHandle(hStdinWrite);
-        return nullptr;
-    }
-    SetHandleInformation(hStdoutRead, HANDLE_FLAG_INHERIT, 0); // read end is ours, non-inheritable
-
-    STARTUPINFOA si = {};
-    si.cb = sizeof(si);
-    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-    si.wShowWindow = SW_HIDE;
-    si.hStdInput  = hStdinRead;
-    si.hStdOutput = hStdoutWrite;
-    si.hStdError  = GetStdHandle(STD_ERROR_HANDLE);
-
-    PROCESS_INFORMATION pi = {};
-    std::string fullCmd = "cmd.exe /c " + cmd;
-    BOOL ok = CreateProcessA(NULL, const_cast<char*>(fullCmd.c_str()),
-                             NULL, NULL, TRUE, CREATE_NO_WINDOW,
-                             NULL, NULL, &si, &pi);
-
-    // Close handles we passed to the child — child has its own copies
-    CloseHandle(hStdinRead);
-    CloseHandle(hStdoutWrite);
-
-    if (!ok)
-    {
-        CloseHandle(hStdinWrite);
-        CloseHandle(hStdoutRead);
-        return nullptr;
-    }
-
-    CloseHandle(pi.hThread);
-    outProcess = pi.hProcess;
-    outReadPipe = hStdoutRead;
-
-    int fd = _open_osfhandle(reinterpret_cast<intptr_t>(hStdinWrite), _O_WRONLY | _O_BINARY);
-    if (fd == -1)
-    {
-        CloseHandle(hStdinWrite);
-        CloseHandle(hStdoutRead);
-        CloseHandle(pi.hProcess);
-        outProcess = INVALID_HANDLE_VALUE;
-        outReadPipe = INVALID_HANDLE_VALUE;
-        return nullptr;
-    }
-    return _fdopen(fd, "wb");
-}
 #else
 #include <sched.h>
 #include <sys/mman.h>
 #endif
+#include <algorithm>
 #include <iostream>
 #include <thread>
 #include <functional>
@@ -91,7 +20,9 @@ UsbDeviceBase::UsbDeviceBase(const ILogger& log)
 
 //----------------------------------------------------------------------------------------------------------------------
 UsbDeviceBase::~UsbDeviceBase()
-{ }
+{
+    FinalizeFlacEncoder();
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 bool UsbDeviceBase::Initialize(uint16_t vendorId, uint16_t productId)
@@ -135,7 +66,7 @@ void UsbDeviceBase::SendConfigurationCommand(const std::string& preferredDeviceP
 //----------------------------------------------------------------------------------------------------------------------
 // Capture methods
 //----------------------------------------------------------------------------------------------------------------------
-bool UsbDeviceBase::StartCapture(const std::filesystem::path& filePath, CaptureFormat format, const std::string& preferredDevicePath, bool isTestMode, bool useSmallUsbTransfers, bool useAsyncFileIo, size_t usbTransferQueueSizeInBytes, size_t diskBufferQueueSizeInBytes, int flacCompressionLevel, int flacOutputSampleRateInHz)
+bool UsbDeviceBase::StartCapture(const std::filesystem::path& filePath, CaptureFormat format, const std::string& preferredDevicePath, bool isTestMode, bool useSmallUsbTransfers, bool useAsyncFileIo, size_t usbTransferQueueSizeInBytes, size_t diskBufferQueueSizeInBytes, int flacCompressionLevel, int flacOutputSampleRateInHz, int flacBitsPerSample)
 {
     // If we're already performing a capture, abort any further processing.
     if (transferInProgress)
@@ -157,13 +88,12 @@ bool UsbDeviceBase::StartCapture(const std::filesystem::path& filePath, CaptureF
     useWindowsOverlappedFileIo = useAsyncFileIo;
 #endif
 
-    // Attempt to create/open the output file or pipe
+    // Attempt to create/open the output file
     if (format == CaptureFormat::Signed16BitFlacOnTheFly)
     {
-        // Open an on-the-fly pipe: ffmpeg (s16le 40MSPS) → resample → u8 → flac → our stdout reader → file
-        int outputSampleRate = flacOutputSampleRateInHz;
-        int flacSampleRate   = flacOutputSampleRateInHz / 1000;
-        int level = (flacCompressionLevel >= 0 && flacCompressionLevel <= 8) ? flacCompressionLevel : 8;
+        configuredFlacCompressionLevel = std::clamp(flacCompressionLevel, 0, 8);
+        configuredFlacOutputSampleRateInHz = std::max(flacOutputSampleRateInHz, 1000);
+        configuredFlacBitsPerSample = (flacBitsPerSample >= 16) ? 16 : 8;
 
         // Open the output file ourselves so we can track FLAC bytes written
         captureOutputFile.clear();
@@ -174,56 +104,32 @@ bool UsbDeviceBase::StartCapture(const std::filesystem::path& filePath, CaptureF
             captureResult = TransferResult::FileCreationError;
             return false;
         }
-
-        // Look for ffmpeg.exe and flac.exe next to our own exe first, then fall back to PATH
-        char exePath[MAX_PATH] = {};
-        GetModuleFileNameA(NULL, exePath, MAX_PATH);
-        std::string exeDir = std::string(exePath);
-        auto lastSlash = exeDir.find_last_of("\\/");
-        exeDir = (lastSlash != std::string::npos) ? exeDir.substr(0, lastSlash + 1) : "";
-        std::string ffmpegLocal = exeDir + "ffmpeg.exe";
-        std::string flacLocal   = exeDir + "flac.exe";
-        std::string ffmpegCmd = std::filesystem::exists(ffmpegLocal) ? ("\"" + ffmpegLocal + "\"") : "ffmpeg";
-        std::string flacCmd   = std::filesystem::exists(flacLocal)   ? ("\"" + flacLocal   + "\"") : "flac";
-
-        // flac writes to stdout (-c), which we capture via the stdout pipe
-        std::string cmd = ffmpegCmd + " -hide_banner -loglevel error -f s16le -ar 40000000 -ac 1 -i pipe:0 "
-            + "-af aresample=" + std::to_string(outputSampleRate) + ":resampler=soxr:precision=28 "
-            + "-sample_fmt u8 -f u8 - | "
-            + flacCmd + " -" + std::to_string(level) + " --bps=8 --sign=unsigned --channels=1 --endian=little "
-            + "--sample-rate=" + std::to_string(flacSampleRate) + " "
-            + "--no-seektable --force-raw-format -f -c -";
-#ifdef _WIN32
-        flacPipeHandle = openPipeNoWindow(cmd, flacPipeProcess, flacReadPipeHandle);
-#else
-        flacPipeHandle = popen(cmd.c_str(), "w");
-#endif
-        if (flacPipeHandle == nullptr)
+        // Initialize the resampler used before FLAC encoding (40 MSPS input -> selected output rate).
+        audioResampler.cleanup();
+        if (configuredFlacOutputSampleRateInHz != 40000000)
         {
-            Log().Error("StartCapture(): Failed to open FLAC pipe");
+            if (!audioResampler.initialize(40000000, static_cast<uint32_t>(configuredFlacOutputSampleRateInHz)))
+            {
+                Log().Error("StartCapture(): Failed to initialize FLAC resampler for output rate {0}", configuredFlacOutputSampleRateInHz);
+                captureOutputFile.close();
+                captureResult = TransferResult::FileCreationError;
+                return false;
+            }
+        }
+
+        if (!InitializeFlacEncoder(configuredFlacCompressionLevel, configuredFlacOutputSampleRateInHz, configuredFlacBitsPerSample))
+        {
+            Log().Error("StartCapture(): Failed to initialize FLAC encoder");
             captureOutputFile.close();
             captureResult = TransferResult::FileCreationError;
             return false;
         }
-
-#ifdef _WIN32
-        // Start a background thread that reads flac's stdout and writes to the output file,
-        // so GetFileSizeWrittenInBytes() returns the actual compressed FLAC bytes in real time.
-        flacReaderThread = std::thread([this]() {
-            const DWORD bufSize = 65536;
-            std::vector<char> buf(bufSize);
-            DWORD bytesRead;
-            while (ReadFile(flacReadPipeHandle, buf.data(), bufSize, &bytesRead, NULL) && bytesRead > 0)
-            {
-                captureOutputFile.write(buf.data(), static_cast<std::streamsize>(bytesRead));
-                transferFileSizeWrittenInBytes += bytesRead;
-            }
-            captureOutputFile.flush();
-        });
-#endif
     }
     else
     {
+        // Ensure no stale encoder state is carried over from previous captures.
+        FinalizeFlacEncoder();
+        audioResampler.cleanup();
 #ifdef _WIN32
         if (useWindowsOverlappedFileIo)
         {
@@ -307,6 +213,216 @@ bool UsbDeviceBase::StartCapture(const std::filesystem::path& filePath, CaptureF
 }
 
 //----------------------------------------------------------------------------------------------------------------------
+FLAC__StreamEncoderWriteStatus UsbDeviceBase::FlacWriteCallback(const FLAC__StreamEncoder* encoder, const FLAC__byte buffer[], size_t bytes, uint32_t samples, uint32_t currentFrame, void* clientData)
+{
+    (void)encoder;
+    (void)samples;
+    (void)currentFrame;
+    auto* self = static_cast<UsbDeviceBase*>(clientData);
+    if ((self == nullptr) || !self->captureOutputFile.is_open())
+    {
+        return FLAC__STREAM_ENCODER_WRITE_STATUS_FATAL_ERROR;
+    }
+    self->captureOutputFile.write(reinterpret_cast<const char*>(buffer), static_cast<std::streamsize>(bytes));
+    if (!self->captureOutputFile.good())
+    {
+        return FLAC__STREAM_ENCODER_WRITE_STATUS_FATAL_ERROR;
+    }
+    self->transferFileSizeWrittenInBytes += bytes;
+    return FLAC__STREAM_ENCODER_WRITE_STATUS_OK;
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+bool UsbDeviceBase::InitializeFlacEncoder(int compressionLevel, int outputSampleRateInHz, int bitsPerSample)
+{
+    FinalizeFlacEncoder();
+
+    if ((bitsPerSample != 8) && (bitsPerSample != 16))
+    {
+        Log().Error("InitializeFlacEncoder(): Unsupported FLAC bits-per-sample value {0}. Expected 8 or 16", bitsPerSample);
+        return false;
+    }
+    if ((outputSampleRateInHz <= 0) || ((outputSampleRateInHz % 1000) != 0))
+    {
+        Log().Error("InitializeFlacEncoder(): Invalid FLAC output sample rate {0}. It must be a positive multiple of 1000Hz", outputSampleRateInHz);
+        return false;
+    }
+
+    const uint32_t flacHeaderSampleRate = static_cast<uint32_t>(outputSampleRateInHz / 1000);
+    if ((flacHeaderSampleRate == 0) || (flacHeaderSampleRate > FLAC__MAX_SAMPLE_RATE))
+    {
+        Log().Error("InitializeFlacEncoder(): FLAC header sample rate {0} is out of range", flacHeaderSampleRate);
+        return false;
+    }
+
+    flacEncoder = FLAC__stream_encoder_new();
+    if (flacEncoder == nullptr)
+    {
+        Log().Error("InitializeFlacEncoder(): Failed to allocate FLAC encoder");
+        return false;
+    }
+
+    const uint32_t clampedCompressionLevel = static_cast<uint32_t>(std::clamp(compressionLevel, 0, 8));
+    const uint32_t configuredBitsPerSample = static_cast<uint32_t>(bitsPerSample);
+    bool configured =
+        FLAC__stream_encoder_set_channels(flacEncoder, 1) &&
+        FLAC__stream_encoder_set_bits_per_sample(flacEncoder, configuredBitsPerSample) &&
+        FLAC__stream_encoder_set_sample_rate(flacEncoder, flacHeaderSampleRate) &&
+        FLAC__stream_encoder_set_compression_level(flacEncoder, clampedCompressionLevel);
+    if (!configured)
+    {
+        Log().Error("InitializeFlacEncoder(): Failed to configure FLAC encoder parameters");
+        FinalizeFlacEncoder();
+        return false;
+    }
+
+    const uint32_t availableCpuCores = std::max(1u, std::thread::hardware_concurrency());
+    uint32_t requestedThreads = (availableCpuCores * 8u) / 10u;
+    if (requestedThreads == 0)
+    {
+        requestedThreads = 1;
+    }
+    requestedThreads = std::min(requestedThreads, 128u);
+
+    const uint32_t setThreadsResult = FLAC__stream_encoder_set_num_threads(flacEncoder, requestedThreads);
+    if (setThreadsResult != FLAC__STREAM_ENCODER_SET_NUM_THREADS_OK)
+    {
+        if (setThreadsResult == FLAC__STREAM_ENCODER_SET_NUM_THREADS_NOT_COMPILED_WITH_MULTITHREADING_ENABLED)
+        {
+            Log().Error("InitializeFlacEncoder(): FLAC multithreading support is mandatory but this libFLAC build was compiled without it");
+        }
+        else if (setThreadsResult == FLAC__STREAM_ENCODER_SET_NUM_THREADS_TOO_MANY_THREADS)
+        {
+            Log().Error("InitializeFlacEncoder(): Requested FLAC thread count {0} exceeds libFLAC limits", requestedThreads);
+        }
+        else if (setThreadsResult == FLAC__STREAM_ENCODER_SET_NUM_THREADS_ALREADY_INITIALIZED)
+        {
+            Log().Error("InitializeFlacEncoder(): FLAC encoder thread count was set after initialization");
+        }
+        else
+        {
+            Log().Error("InitializeFlacEncoder(): Failed to set FLAC thread count. Result code {0}", setThreadsResult);
+        }
+        FinalizeFlacEncoder();
+        return false;
+    }
+
+    Log().Info("InitializeFlacEncoder(): FLAC encoding threads set to {0} ({1}% of {2} detected cores)", requestedThreads, 80, availableCpuCores);
+
+    FLAC__StreamEncoderInitStatus initStatus = FLAC__stream_encoder_init_stream(
+        flacEncoder,
+        &UsbDeviceBase::FlacWriteCallback,
+        nullptr,
+        nullptr,
+        nullptr,
+        this);
+    if (initStatus != FLAC__STREAM_ENCODER_INIT_STATUS_OK)
+    {
+        Log().Error("InitializeFlacEncoder(): FLAC encoder initialization failed with status {0}", FLAC__StreamEncoderInitStatusString[initStatus]);
+        FinalizeFlacEncoder();
+        return false;
+    }
+
+    return true;
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+bool UsbDeviceBase::EncodeSigned16BufferToFlac(const std::vector<uint8_t>& signed16Buffer)
+{
+    if (flacEncoder == nullptr)
+    {
+        Log().Error("EncodeSigned16BufferToFlac(): FLAC encoder is not initialized");
+        return false;
+    }
+    if ((signed16Buffer.size() % 2) != 0)
+    {
+        Log().Error("EncodeSigned16BufferToFlac(): Input buffer size {0} is not aligned to 16-bit samples", signed16Buffer.size());
+        return false;
+    }
+
+    const size_t inputSampleCount = signed16Buffer.size() / 2;
+    resampleInputBuffer.resize(inputSampleCount);
+    for (size_t i = 0; i < inputSampleCount; ++i)
+    {
+        const uint16_t packed = static_cast<uint16_t>(signed16Buffer[(i * 2) + 0]) |
+            (static_cast<uint16_t>(signed16Buffer[(i * 2) + 1]) << 8);
+        resampleInputBuffer[i] = static_cast<int16_t>(packed);
+    }
+
+    const int16_t* samplesForEncoding = resampleInputBuffer.data();
+    size_t sampleCountForEncoding = inputSampleCount;
+    if (configuredFlacOutputSampleRateInHz != 40000000)
+    {
+        int expectedOutputSamples = audioResampler.getExpectedOutputSampleCount(static_cast<int>(inputSampleCount));
+        if (expectedOutputSamples <= 0)
+        {
+            expectedOutputSamples = static_cast<int>(inputSampleCount);
+        }
+        resampleOutputBuffer.resize(static_cast<size_t>(expectedOutputSamples) + 64);
+        int actualOutputSamples = audioResampler.resample(
+            resampleInputBuffer.data(),
+            static_cast<int>(inputSampleCount),
+            resampleOutputBuffer.data(),
+            static_cast<int>(resampleOutputBuffer.size()));
+        if (actualOutputSamples < 0)
+        {
+            Log().Error("EncodeSigned16BufferToFlac(): Audio resampling failed before FLAC encoding");
+            return false;
+        }
+        samplesForEncoding = resampleOutputBuffer.data();
+        sampleCountForEncoding = static_cast<size_t>(actualOutputSamples);
+    }
+
+    if (sampleCountForEncoding == 0)
+    {
+        return true;
+    }
+
+    flacInputSamples.resize(sampleCountForEncoding);
+    if (configuredFlacBitsPerSample == 16)
+    {
+        for (size_t i = 0; i < sampleCountForEncoding; ++i)
+        {
+            flacInputSamples[i] = static_cast<FLAC__int32>(samplesForEncoding[i]);
+        }
+    }
+    else
+    {
+        for (size_t i = 0; i < sampleCountForEncoding; ++i)
+        {
+            int32_t shiftedSample = static_cast<int32_t>(samplesForEncoding[i]) + 32768;
+            shiftedSample = std::clamp(shiftedSample, 0, 65535);
+            const uint8_t unsignedEightBitSample = static_cast<uint8_t>(shiftedSample >> 8);
+            flacInputSamples[i] = static_cast<FLAC__int32>(static_cast<int32_t>(unsignedEightBitSample) - 128);
+        }
+    }
+
+    if (!FLAC__stream_encoder_process_interleaved(flacEncoder, flacInputSamples.data(), static_cast<uint32_t>(sampleCountForEncoding)))
+    {
+        FLAC__StreamEncoderState state = FLAC__stream_encoder_get_state(flacEncoder);
+        Log().Error("EncodeSigned16BufferToFlac(): FLAC encoding failed with state {0}", FLAC__StreamEncoderStateString[state]);
+        return false;
+    }
+
+    return true;
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+void UsbDeviceBase::FinalizeFlacEncoder()
+{
+    if (flacEncoder != nullptr)
+    {
+        if (!FLAC__stream_encoder_finish(flacEncoder))
+        {
+            FLAC__StreamEncoderState state = FLAC__stream_encoder_get_state(flacEncoder);
+            Log().Warning("FinalizeFlacEncoder(): FLAC finalize reported state {0}", FLAC__StreamEncoderStateString[state]);
+        }
+        FLAC__stream_encoder_delete(flacEncoder);
+        flacEncoder = nullptr;
+    }
+}
+
+//----------------------------------------------------------------------------------------------------------------------
 void UsbDeviceBase::StopCapture()
 {
     // If a transfer isn't currently in progress, abort any further processing.
@@ -334,35 +450,11 @@ void UsbDeviceBase::StopCapture()
 #endif
     diskBufferEntries.reset();
 
-    // Close the output file or pipe
+    // Close the output file
     if (captureFormat == CaptureFormat::Signed16BitFlacOnTheFly)
     {
-        if (flacPipeHandle != nullptr)
-        {
-#ifdef _WIN32
-            // Close stdin pipe → ffmpeg gets EOF → flac gets EOF → flac closes stdout pipe
-            fclose(flacPipeHandle);
-            flacPipeHandle = nullptr;
-            if (flacPipeProcess != INVALID_HANDLE_VALUE)
-            {
-                WaitForSingleObject(flacPipeProcess, INFINITE);
-                CloseHandle(flacPipeProcess);
-                flacPipeProcess = INVALID_HANDLE_VALUE;
-            }
-            // Drain any remaining bytes from flac stdout and close the file
-            if (flacReaderThread.joinable())
-                flacReaderThread.join();
-            if (flacReadPipeHandle != INVALID_HANDLE_VALUE)
-            {
-                CloseHandle(flacReadPipeHandle);
-                flacReadPipeHandle = INVALID_HANDLE_VALUE;
-            }
-            captureOutputFile.close();
-#else
-            pclose(flacPipeHandle);
-            flacPipeHandle = nullptr;
-#endif
-        }
+        FinalizeFlacEncoder();
+        captureOutputFile.close();
     }
     else
     {
@@ -418,7 +510,7 @@ void UsbDeviceBase::CaptureThread()
         requiredConversionBufferSize = (diskBufferSizeInBytes / (8 * 4)) * 5;
         break;
     case CaptureFormat::Signed16BitFlacOnTheFly:
-        // Full s16le at 40MSPS is piped to ffmpeg which handles downsampling
+        // Full s16le at 40MSPS is converted and encoded through native libFLAC
         requiredConversionBufferSize = diskBufferSizeInBytes;
         break;
     }
@@ -844,14 +936,12 @@ void UsbDeviceBase::ProcessingThread()
                 continue;
             }
 
-            // Write the converted data to the pipe or output file
+            // Write the converted data to the output path
             if (captureFormat == CaptureFormat::Signed16BitFlacOnTheFly)
             {
-                // Write raw s16le data to the ffmpeg+flac pipe
-                size_t written = fwrite(currentConversionBuffer.data(), 1, currentConversionBuffer.size(), flacPipeHandle);
-                if (written != currentConversionBuffer.size())
+                if (!EncodeSigned16BufferToFlac(currentConversionBuffer))
                 {
-                    Log().Error("ProcessingThread(): Failed to write to FLAC pipe");
+                    Log().Error("ProcessingThread(): Failed to encode FLAC buffer");
                     SetProcessingFinished(TransferResult::FileWriteError);
                     processingFailure = true;
                     continue;
@@ -859,7 +949,7 @@ void UsbDeviceBase::ProcessingThread()
                 bufferEntry.isDiskBufferFull.clear();
                 bufferEntry.isDiskBufferFull.notify_all();
                 ++transferBufferWrittenCount;
-                // transferFileSizeWrittenInBytes is updated by the flac reader thread (FLAC bytes)
+                // transferFileSizeWrittenInBytes is updated by the FLAC write callback.
             }
             else
             {
@@ -1159,7 +1249,7 @@ bool UsbDeviceBase::ConvertRawSampleData(size_t diskBufferIndex, CaptureFormat c
         || captureFormat == CaptureFormat::Signed16BitFlacOnTheFly)
     {
         // Translate the data in the disk buffer to scaled 16-bit signed data
-        // (For FlacOnTheFly, the full-rate s16le stream is piped to ffmpeg for downsampling)
+        // (For FlacOnTheFly, the full-rate s16le stream is passed to native resample/FLAC encode)
         for (size_t i = 0; i < readBufferSizeInBytes; i += 2)
         {
             // Get the original 10-bit unsigned value from the disk data buffer
