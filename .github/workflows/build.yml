@@ -8,8 +8,8 @@ on:
         required: false
         type: boolean
         default: false
-      release_tag:
-        description: "Tag to release when manually dispatched (example: v1.0.0)"
+      version_number:
+        description: "Version number/tag for manual release (example: v1.0.0)"
         required: false
         type: string
   push:
@@ -18,6 +18,9 @@ on:
 
 permissions:
   contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   linux:
@@ -66,9 +69,9 @@ jobs:
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
           else
-            TAG="${{ inputs.release_tag }}"
+            TAG="${{ inputs.version_number }}"
             if [[ -z "$TAG" ]]; then
-              echo "release_tag is required when create_release=true"
+              echo "version_number is required when create_release=true"
               exit 1
             fi
             if ! git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
@@ -89,7 +92,6 @@ jobs:
           files: |
             release-assets/**/DomesdayDuplicator-Linux-x64.tar.gz
             release-assets/**/DomesdayDuplicator-Linux-ARM64.tar.gz
-            release-assets/**/*.AppImage
             release-assets/**/DomesdayDuplicator-Windows-x64.tar.gz
             release-assets/**/DomesdayDuplicator-macOS-x64.tar.gz
             release-assets/**/DomesdayDuplicator-macOS-ARM64.tar.gz
