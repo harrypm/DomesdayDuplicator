@@ -25,19 +25,19 @@ env:
 jobs:
   linux:
     name: Linux builds
-    uses: ./.github/workflows/_reusable-linux-build.yml
+    uses: ./.github/workflows/build-linux.yml
     with:
       upload_artifacts: true
 
   windows:
     name: Windows builds
-    uses: ./.github/workflows/_reusable-windows-build.yml
+    uses: ./.github/workflows/build-windows.yml
     with:
       upload_artifacts: true
 
   macos:
     name: macOS builds
-    uses: ./.github/workflows/_reusable-macos-build.yml
+    uses: ./.github/workflows/build-macos.yml
     with:
       upload_artifacts: true
 
