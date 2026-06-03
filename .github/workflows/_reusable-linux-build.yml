@@ -1,0 +1,184 @@
+name: Reusable Linux build
+
+on:
+  workflow_call:
+    inputs:
+      upload_artifacts:
+        description: Upload Linux build artifacts.
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build-linux-x64:
+    runs-on: ubuntu-22.04
+    name: Linux x64 Build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            build-essential \
+            cmake \
+            pkg-config \
+            libusb-1.0-0-dev \
+            libswresample-dev \
+            libavutil-dev \
+            libflac-dev \
+            qt6-base-dev \
+            qt6-base-dev-tools \
+            libqt6widgets6 \
+            libqt6serialport6-dev \
+            libgl1-mesa-dev \
+            libglu1-mesa-dev \
+            libxkbcommon-dev
+
+      - name: Configure and Build
+        working-directory: Linux-Application
+        run: |
+          export PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
+          cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release -j"$(nproc)"
+
+      - name: Package Linux x64 build
+        working-directory: Linux-Application
+        run: |
+          mkdir -p artifacts/DomesdayDuplicator-Linux-x64
+          cp build/DomesdayDuplicator/DomesdayDuplicator artifacts/DomesdayDuplicator-Linux-x64/
+          cp build/dddconv/dddconv artifacts/DomesdayDuplicator-Linux-x64/
+          cp build/dddutil/dddutil artifacts/DomesdayDuplicator-Linux-x64/
+          cp DOWNSAMPLING_README.md artifacts/DomesdayDuplicator-Linux-x64/
+          cp build_with_system_ffmpeg.sh artifacts/DomesdayDuplicator-Linux-x64/
+
+          cat > artifacts/DomesdayDuplicator-Linux-x64/install.sh << 'EOF'
+          #!/bin/bash
+          echo "DomesdayDuplicator Linux Installation"
+          echo "====================================="
+          echo "Prerequisites: libusb, FFmpeg runtime libs, FLAC runtime libs, Qt6 Widgets/SerialPort, OpenGL, xkbcommon"
+          PKGS=(libusb-1.0-0 libqt6core6 libqt6gui6 libqt6widgets6 libqt6serialport6 libgl1 libglu1-mesa libxkbcommon0)
+          for candidate in libflac12 libflac8; do
+            if apt-cache show "$candidate" >/dev/null 2>&1; then
+              PKGS+=("$candidate")
+              break
+            fi
+          done
+          for candidate in libswresample4 libswresample3; do
+            if apt-cache show "$candidate" >/dev/null 2>&1; then
+              PKGS+=("$candidate")
+              break
+            fi
+          done
+          for candidate in libavutil57 libavutil56; do
+            if apt-cache show "$candidate" >/dev/null 2>&1; then
+              PKGS+=("$candidate")
+              break
+            fi
+          done
+          echo "Install with: sudo apt install ${PKGS[*]}"
+          echo ""
+          echo "To run: ./DomesdayDuplicator"
+          chmod +x DomesdayDuplicator dddconv dddutil
+          EOF
+          chmod +x artifacts/DomesdayDuplicator-Linux-x64/install.sh
+
+          tar -czf DomesdayDuplicator-Linux-x64.tar.gz -C artifacts DomesdayDuplicator-Linux-x64
+
+      - name: Upload Linux x64 artifact
+        if: ${{ inputs.upload_artifacts }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: DomesdayDuplicator-Linux-x64
+          path: Linux-Application/DomesdayDuplicator-Linux-x64.tar.gz
+          retention-days: 30
+
+  build-linux-arm64:
+    runs-on: ubuntu-22.04
+    name: Linux ARM64 Build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build ARM64 binaries in container
+        run: |
+          docker run --rm --platform=linux/arm64 \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace/Linux-Application \
+            ubuntu:22.04 bash -c "
+              apt update && apt install -y \
+                build-essential cmake pkg-config \
+                libusb-1.0-0-dev libswresample-dev libavutil-dev libflac-dev \
+                qt6-base-dev qt6-base-dev-tools libqt6widgets6 \
+                libqt6serialport6-dev libgl1-mesa-dev \
+                libglu1-mesa-dev libxkbcommon-dev
+
+              export PKG_CONFIG_PATH='/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig'
+              cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+              cmake --build build --config Release -j\$(nproc)
+            "
+
+      - name: Package Linux ARM64 build
+        working-directory: Linux-Application
+        run: |
+          mkdir -p artifacts/DomesdayDuplicator-Linux-ARM64
+          cp build/DomesdayDuplicator/DomesdayDuplicator artifacts/DomesdayDuplicator-Linux-ARM64/
+          cp build/dddconv/dddconv artifacts/DomesdayDuplicator-Linux-ARM64/
+          cp build/dddutil/dddutil artifacts/DomesdayDuplicator-Linux-ARM64/
+          cp DOWNSAMPLING_README.md artifacts/DomesdayDuplicator-Linux-ARM64/
+          cp build_with_system_ffmpeg.sh artifacts/DomesdayDuplicator-Linux-ARM64/
+
+          cat > artifacts/DomesdayDuplicator-Linux-ARM64/install.sh << 'EOF'
+          #!/bin/bash
+          echo "DomesdayDuplicator Linux ARM64 Installation"
+          echo "=========================================="
+          echo "Prerequisites: libusb, FFmpeg runtime libs, FLAC runtime libs, Qt6 Widgets/SerialPort, OpenGL, xkbcommon"
+          PKGS=(libusb-1.0-0 libqt6core6 libqt6gui6 libqt6widgets6 libqt6serialport6 libgl1 libglu1-mesa libxkbcommon0)
+          for candidate in libflac12 libflac8; do
+            if apt-cache show "$candidate" >/dev/null 2>&1; then
+              PKGS+=("$candidate")
+              break
+            fi
+          done
+          for candidate in libswresample4 libswresample3; do
+            if apt-cache show "$candidate" >/dev/null 2>&1; then
+              PKGS+=("$candidate")
+              break
+            fi
+          done
+          for candidate in libavutil57 libavutil56; do
+            if apt-cache show "$candidate" >/dev/null 2>&1; then
+              PKGS+=("$candidate")
+              break
+            fi
+          done
+          echo "Install with: sudo apt install ${PKGS[*]}"
+          echo ""
+          echo "To run: ./DomesdayDuplicator"
+          chmod +x DomesdayDuplicator dddconv dddutil
+          EOF
+          chmod +x artifacts/DomesdayDuplicator-Linux-ARM64/install.sh
+
+          tar -czf DomesdayDuplicator-Linux-ARM64.tar.gz -C artifacts DomesdayDuplicator-Linux-ARM64
+
+      - name: Upload Linux ARM64 artifact
+        if: ${{ inputs.upload_artifacts }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: DomesdayDuplicator-Linux-ARM64
+          path: Linux-Application/DomesdayDuplicator-Linux-ARM64.tar.gz
+          retention-days: 30
+

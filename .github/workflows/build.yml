@@ -1,0 +1,97 @@
+name: Build & Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: Create a GitHub release and upload built assets
+        required: false
+        type: boolean
+        default: false
+      version_number:
+        description: "Version number/tag for manual release (example: v1.0.0)"
+        required: false
+        type: string
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  linux:
+    name: Linux builds
+    uses: ./.github/workflows/_reusable-linux-build.yml
+    with:
+      upload_artifacts: true
+
+  windows:
+    name: Windows builds
+    uses: ./.github/workflows/_reusable-windows-build.yml
+    with:
+      upload_artifacts: true
+
+  macos:
+    name: macOS builds
+    uses: ./.github/workflows/_reusable-macos-build.yml
+    with:
+      upload_artifacts: true
+
+  release:
+    name: Publish release assets
+    runs-on: ubuntu-24.04
+    needs:
+      - linux
+      - windows
+      - macos
+    if: ${{ startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.create_release) }}
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+
+      - name: Resolve release tag
+        id: tag
+        run: |
+          set -eux
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            TAG="${{ inputs.version_number }}"
+            if [[ -z "$TAG" ]]; then
+              echo "version_number is required when create_release=true"
+              exit 1
+            fi
+            if ! git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
+              git config user.name "github-actions[bot]"
+              git config user.email "github-actions[bot]@users.noreply.github.com"
+              git tag "$TAG" "$GITHUB_SHA"
+              git push origin "$TAG"
+            fi
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            release-assets/**/DomesdayDuplicator-Linux-x64.tar.gz
+            release-assets/**/DomesdayDuplicator-Linux-ARM64.tar.gz
+            release-assets/**/DomesdayDuplicator-Windows-x64.tar.gz
+            release-assets/**/DomesdayDuplicator-macOS-x64.tar.gz
+            release-assets/**/DomesdayDuplicator-macOS-ARM64.tar.gz

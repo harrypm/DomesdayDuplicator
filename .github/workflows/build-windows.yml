@@ -1,0 +1,23 @@
+name: Build Windows
+
+on:
+  push:
+    branches:
+      - master
+      - main
+      - 'Direct-FLAC-&-Resampling'
+  pull_request:
+    branches:
+      - master
+      - main
+      - 'Direct-FLAC-&-Resampling'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/_reusable-windows-build.yml
+    with:
+      upload_artifacts: true
