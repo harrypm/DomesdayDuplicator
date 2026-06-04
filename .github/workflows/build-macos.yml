@@ -25,7 +25,7 @@ permissions:
 
 jobs:
   build-macos-x64:
-    runs-on: macos-13
+    runs-on: macos-15-intel
     name: macOS x64 Build
     steps:
       - uses: actions/checkout@v4
@@ -63,8 +63,7 @@ jobs:
           elif [ -f "build/dddutil/dddutil" ]; then
             cp build/dddutil/dddutil artifacts/DomesdayDuplicator-macOS-x64/
           fi
-
-          cp DOWNSAMPLING_README.md artifacts/DomesdayDuplicator-macOS-x64/
+          if [ -f DOWNSAMPLING_README.md ]; then cp DOWNSAMPLING_README.md artifacts/DomesdayDuplicator-macOS-x64/; fi
           cp build_with_system_ffmpeg.sh artifacts/DomesdayDuplicator-macOS-x64/
           tar -czf DomesdayDuplicator-macOS-x64.tar.gz -C artifacts DomesdayDuplicator-macOS-x64
 
@@ -123,8 +122,7 @@ jobs:
           elif [ -f "build/dddutil/dddutil" ]; then
             cp build/dddutil/dddutil artifacts/DomesdayDuplicator-macOS-ARM64/
           fi
-
-          cp DOWNSAMPLING_README.md artifacts/DomesdayDuplicator-macOS-ARM64/
+          if [ -f DOWNSAMPLING_README.md ]; then cp DOWNSAMPLING_README.md artifacts/DomesdayDuplicator-macOS-ARM64/; fi
           cp build_with_system_ffmpeg.sh artifacts/DomesdayDuplicator-macOS-ARM64/
           tar -czf DomesdayDuplicator-macOS-ARM64.tar.gz -C artifacts DomesdayDuplicator-macOS-ARM64
 

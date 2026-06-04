@@ -46,6 +46,12 @@ jobs:
             mingw-w64-x86_64-qt6-base
             mingw-w64-x86_64-qt6-tools
             mingw-w64-x86_64-qt6-serialport
+      - name: Add onecoreuap compatibility import library
+        shell: msys2 {0}
+        run: |
+          if [ ! -f /mingw64/lib/libonecoreuap.a ] && [ -f /mingw64/lib/libonecoreuap_apiset.a ]; then
+            cp /mingw64/lib/libonecoreuap_apiset.a /mingw64/lib/libonecoreuap.a
+          fi
 
       - name: Build
         shell: msys2 {0}
@@ -64,7 +70,7 @@ jobs:
           cp build/DomesdayDuplicator/DomesdayDuplicator.exe artifacts/DomesdayDuplicator-Windows-x64/
           cp build/dddconv/dddconv.exe artifacts/DomesdayDuplicator-Windows-x64/
           cp build/dddutil/dddutil.exe artifacts/DomesdayDuplicator-Windows-x64/
-          cp DOWNSAMPLING_README.md artifacts/DomesdayDuplicator-Windows-x64/
+          if [ -f DOWNSAMPLING_README.md ]; then cp DOWNSAMPLING_README.md artifacts/DomesdayDuplicator-Windows-x64/; fi
 
           ldd build/DomesdayDuplicator/DomesdayDuplicator.exe | grep mingw64 | awk '{print $3}' | head -20 | while read dll; do
             [ -f "$dll" ] && cp "$dll" artifacts/DomesdayDuplicator-Windows-x64/ || true

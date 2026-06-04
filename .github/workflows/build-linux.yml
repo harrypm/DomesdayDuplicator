@@ -65,7 +65,7 @@ jobs:
           cp build/DomesdayDuplicator/DomesdayDuplicator artifacts/DomesdayDuplicator-Linux-x64/
           cp build/dddconv/dddconv artifacts/DomesdayDuplicator-Linux-x64/
           cp build/dddutil/dddutil artifacts/DomesdayDuplicator-Linux-x64/
-          cp DOWNSAMPLING_README.md artifacts/DomesdayDuplicator-Linux-x64/
+          if [ -f DOWNSAMPLING_README.md ]; then cp DOWNSAMPLING_README.md artifacts/DomesdayDuplicator-Linux-x64/; fi
           cp build_with_system_ffmpeg.sh artifacts/DomesdayDuplicator-Linux-x64/
 
           cat > artifacts/DomesdayDuplicator-Linux-x64/install.sh << 'EOF'
@@ -148,7 +148,7 @@ jobs:
           cp build/DomesdayDuplicator/DomesdayDuplicator artifacts/DomesdayDuplicator-Linux-ARM64/
           cp build/dddconv/dddconv artifacts/DomesdayDuplicator-Linux-ARM64/
           cp build/dddutil/dddutil artifacts/DomesdayDuplicator-Linux-ARM64/
-          cp DOWNSAMPLING_README.md artifacts/DomesdayDuplicator-Linux-ARM64/
+          if [ -f DOWNSAMPLING_README.md ]; then cp DOWNSAMPLING_README.md artifacts/DomesdayDuplicator-Linux-ARM64/; fi
           cp build_with_system_ffmpeg.sh artifacts/DomesdayDuplicator-Linux-ARM64/
 
           cat > artifacts/DomesdayDuplicator-Linux-ARM64/install.sh << 'EOF'
