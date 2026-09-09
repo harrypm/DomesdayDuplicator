@@ -5,11 +5,11 @@ Please see the [Project Wiki](https://github.com/harrypm/DomesdayDuplicator/wiki
 
 <img src="https://user-images.githubusercontent.com/56382624/183899501-a1914f3f-0710-4095-8f0e-b84e6d266d1c.png" width="400" height="">
 
-The Domesday Duplicator is a LaserDisc capture focused, USB 3.0 based DAQ capable of 40 million samples per second acquisition of analogue RF data at 10-bits resolution, the data being in generic PCM style stream format is ready for [FLAC compression](https://github.com/oyvindln/vhs-decode/wiki/RF-Compression-&-Decompression-Guide) or direct use with a wide range of decoders.
+The Domesday Duplicator is a LaserDisc capture focused, USB 3.0 based DAQ capable of 40 million samples per second acquisition of analogue RF data at 10-bits resolution, the data being in generic PCM style stream format is ready for real-time FLAC compression via capture apps.
 
-Capture is via a easy to use GUI capture application.
+Capturing is easy to use & inspect via the universal (hardware and platform support) [MISRC GUI](https://github.com/harrypm/MISRC-GUI)
 
-<img src="https://user-images.githubusercontent.com/56382624/219953404-2ad85772-7fe3-40e8-a4b3-9ea61443736d.gif" width="350" height="">
+<img width="1280" height="400" alt="image" src="https://github.com/user-attachments/assets/c6fc07a5-e26f-41a8-afd9-153a2687731f" />
 
 
 # The Decode Family
@@ -17,19 +17,18 @@ Capture is via a easy to use GUI capture application.
 
 The samples the DdD capture can be used with the family of decoders that make the FM RF Archival workflow ready to use today.
 
-[LaserDisc Decode](https://github.com/happycube/ld-decode) / [VHS-Decode (Videotape)](https://github.com/oyvindln/vhs-decode/wiki/) / [CVBS (Composite) Decode](CVBS-Composite-Decode) / [HiFi Decode](HiFi-Decode) / [RTLSDR HiFi Decode](RTLSDR) / [MUSE-Decode](https://bitbucket.org/staffanulfberg/ldaudio/src/master/musecpp/) / [CD-Decode](https://github.com/happycube/cd-decode) / [FL2K TBC Player](TBC-To-Analogue)
+[LaserDisc Decode](https://github.com/happycube/ld-decode) / [VHS-Decode (Videotape)](https://github.com/oyvindln/vhs-decode/wiki/HiFi-Decode) / [HiFi Decode](https://github.com/oyvindln/vhs-decode/wiki/HiFi-Decode)
 
 
 # 3D Printed Case 
 
 
-The DomesDay Duplicator also has a [3D models](https://github.com/simoninns/DomesdayDuplicator-Case) and ready to use data for producing 3D printed cases, to protect from dust or line with copper tape for affordable EMI shielding for example.
+The Domesday Duplicator also has a [3D models](https://github.com/simoninns/DomesdayDuplicator-Case) and ready to use data for producing 3D printed cases, to protect from dust or line with copper tape for affordable EMI shielding for example.
 
-<img src="Case/images/DdD-case1.png" width="400" height="">
+<img width="780" height="400" alt="ddd-case" src="https://github.com/user-attachments/assets/83162704-87fc-4003-8b3d-c6cfc82c2fb7" />
 
 
 ## Authors
-
 
 Domesday Duplicator was written & designed by [Simon Inns](https://github.com/simoninns).
 
